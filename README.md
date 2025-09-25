@@ -86,8 +86,8 @@ format.
 For example, if we define `new OtpService('P1M')`, users will sign in 
 using otp at least once a month.
 
-Empty constructor `new OtpService()` means that every sign in accompanies 
-by otp.
+Empty constructor `new OtpService()` means that every authentication process 
+accompanied by otp.
 
 > Either way, the otp process will be invoked no more often than once 
 > during user session.
