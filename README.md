@@ -9,7 +9,7 @@ passwords.
 The authentication process will be:
 
 * user signs-in with login and password
-* application send an email with one time password
+* application sends an email with one time password
 * user affirms authentication providing this password
 
 This process is similar to email verification scenario, but invokes more 
