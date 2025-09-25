@@ -143,11 +143,12 @@ Route::middleware(['auth', EnsureOtpIsPassed::class])->group(function () {
 ## Customization
 
 You may change published blade template, or you may register custom view.
-Also, you may register custom function to generate otp codes.
+You may register custom function to generate otp codes.
+And you may register custom function for composing a notification.
 
 ```php
 use Codewiser\Otp\OtpService;
-
+use Codewiser\Otp\Notifications\EmailWithOtp;
 use Illuminate\Support\ServiceProvider;
 
 class OtpServiceProvider extends ServiceProvider
@@ -160,6 +161,10 @@ class OtpServiceProvider extends ServiceProvider
         OtpService::view(fn() => view('auth.custom-view'));
         
         OtpService::newCodeUsing(fn() => rand(1000, 9999));
+        
+        EmailWithOtp::toMailUsing(function(object $notifiable, string $otp) {
+            //
+        });
     }
 }
 ```

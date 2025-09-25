@@ -2,7 +2,7 @@
 
 namespace Codewiser\Otp\Traits;
 
-use Codewiser\Otp\Notifications\VerifyEmailWithOtp;
+use Codewiser\Otp\Notifications\EmailWithOtp;
 use DateTimeInterface;
 use Illuminate\Auth\MustVerifyEmail;
 
@@ -17,6 +17,6 @@ trait MustVerifyEmailWithOtp
 
     public function sendOtpNotification(string $code): void
     {
-        $this->notify(new VerifyEmailWithOtp($code));
+        $this->notify(new EmailWithOtp($code));
     }
 }
