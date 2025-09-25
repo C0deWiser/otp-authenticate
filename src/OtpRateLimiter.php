@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\RateLimiter;
 /**
  * Helper class, that handles Laravel RateLimiter.
  */
-class OtpLimiter
+class OtpRateLimiter
 {
     public static function for(Throttle $name, Request $request): static
     {

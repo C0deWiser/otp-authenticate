@@ -42,6 +42,7 @@
         @csrf
 
         @if($availableIn)
+            <!-- implement js countdown here -->
             <p>{{ __('Next code available in :seconds', ['seconds' => $availableIn]) }}</p>
         @endif
 

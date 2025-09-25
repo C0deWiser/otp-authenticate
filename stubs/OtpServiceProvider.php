@@ -2,7 +2,8 @@
 
 namespace App\Providers;
 
-use Codewiser\Otp\OtpLimiter;
+use Codewiser\Otp\OtpLimit;
+use Codewiser\Otp\OtpRateLimiter;
 use Codewiser\Otp\OtpService;
 use Codewiser\Otp\Throttle;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -27,21 +28,13 @@ class OtpServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        RateLimiter::for(Throttle::issue, function (Request $request) {
+        RateLimiter::for(Throttle::issue, fn(Request $request) => [
+            OtpLimit::perMinute(1)->for(Throttle::issue)->by('minute:'.$request->user()->id),
+            OtpLimit::perDay(15)->for(Throttle::issue)->by('day:'.$request->user()->id),
+        ]);
 
-            $response = OtpLimiter::for(Throttle::issue, $request)->response();
-
-            return [
-                Limit::perMinute(1)->response($response)->by('minute:'.$request->user()->id),
-                Limit::perDay(15)->response($response)->by('day:'.$request->user()->id),
-            ];
-        });
-
-        RateLimiter::for(Throttle::verify, function (Request $request) {
-
-            $response = OtpLimiter::for(Throttle::verify, $request)->response();
-
-            return Limit::perDay(30)->response($response)->by($request->user()->id);
-        });
+        RateLimiter::for(Throttle::verify, fn(Request $request) => [
+            OtpLimit::perDay(30)->for(Throttle::verify)->by($request->user()->id)
+        ]);
     }
 }

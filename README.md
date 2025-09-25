@@ -35,7 +35,7 @@ _Providers/OtpServiceProvider.php_
 
 namespace App\Providers;
 
-use Codewiser\Otp\OtpLimiter;
+use Codewiser\Otp\OtpLimit;
 use Codewiser\Otp\OtpService;
 use Codewiser\Otp\Throttle;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -60,32 +60,22 @@ class OtpServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        RateLimiter::for(Throttle::issue, function (Request $request) {
+        RateLimiter::for(Throttle::issue, fn(Request $request) => [
+            OtpLimit::perMinute(1)->for(Throttle::issue)->by('minute:'.$request->user()->id),
+            OtpLimit::perDay(15)->for(Throttle::issue)->by('day:'.$request->user()->id),
+        ]);
 
-            $response = OtpLimiter::for(Throttle::issue, $request)->response();
-
-            return [
-                Limit::perMinute(1)->by('minute:'.$request->user()->id)
-                    ->response($response),
-                    
-                Limit::perDay(15)->by('day:'.$request->user()->id)
-                    ->response($response)
-            ];
-        });
-
-        RateLimiter::for(Throttle::verify, function (Request $request) {
-
-            $response = OtpLimiter::for(Throttle::verify, $request)->response();
-
-            return Limit::perDay(30)->by($request->user()->id)
-                ->response($response);
-        });
+        RateLimiter::for(Throttle::verify, fn(Request $request) => [
+            OtpLimit::perDay(30)->for(Throttle::verify)->by($request->user()->id)
+        ]);
     }
 }
 ```
 
-As you can see, we use custom response to return user back to the previous page 
-with throttle message.
+As you can see, we use extended `OtpLimit` with custom response that returns 
+user back to the previous page with a throttle message.
+
+You may use base `Limit` as well.
 
 ### Otp service constructor
 

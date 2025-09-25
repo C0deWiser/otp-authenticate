@@ -31,7 +31,7 @@ class OtpController
 
         return $this->otp->noticeView(
             $request,
-            OtpLimiter::forIssuing($request)->availableIn()
+            OtpRateLimiter::forIssuing($request)->availableIn()
         );
     }
 
