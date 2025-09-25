@@ -1,4 +1,4 @@
-# One time password for Laravel
+# One time passwords for Laravel
 
 In a very simple case, our Laravel applications authenticates users by login 
 and password. Sometimes we force our applications to verify user's emails.
