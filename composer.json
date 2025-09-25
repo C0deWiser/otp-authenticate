@@ -1,0 +1,34 @@
+{
+    "name": "codewiser/otp-authenticate",
+    "description": "Protect Laravel authentication with one time passwords",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Codewiser\\Otp\\": "src/"
+        }
+    },
+  "autoload-dev": {
+    "classmap": ["stubs/"]
+  },
+    "authors": [
+        {
+            "name": "pm",
+            "email": "pm@101media.ru"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {
+      "php": "^8.2"
+    },
+    "require-dev": {
+        "laravel/framework": "^12.31"
+    },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Codewiser\\Otp\\OtpServiceProvider"
+      ]
+    }
+  }
+}
