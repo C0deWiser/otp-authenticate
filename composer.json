@@ -1,6 +1,6 @@
 {
     "name": "codewiser/otp-authenticate",
-    "description": "Protect Laravel authentication with one time passwords",
+    "description": "One time passwords for Laravel",
     "type": "library",
     "license": "MIT",
     "autoload": {

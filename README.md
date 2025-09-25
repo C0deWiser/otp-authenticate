@@ -1,10 +1,10 @@
-# OTP Verification
+# One time password for Laravel
 
-In a very simple case, our applications authenticates users by login and 
-password. Sometimes we force our applications to verify user's emails.
+In a very simple case, our Laravel applications authenticates users by login 
+and password. Sometimes we force our applications to verify user's emails.
 
 This package requires users to periodically re-verify emails using one time 
-password.
+passwords.
 
 The authentication process will be:
 
