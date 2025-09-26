@@ -12,14 +12,15 @@ The authentication process will be:
 * application sends an email with one time password
 * user affirms authentication providing this password
 
-This process is similar to email verification scenario, but invokes more 
-than once.
+![otp](otp.png)
 
 ## Installation
 
 Install service.
 
 ```php
+composer require codewiser/otp-authenticate
+
 php artisan otp:install
 ```
 
