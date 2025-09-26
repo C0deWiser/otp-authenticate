@@ -1,6 +1,6 @@
 <?php
 
-namespace Codewiser\Otp;
+namespace Codewiser\Otp\RateLimiter;
 
 enum Throttle: string
 {

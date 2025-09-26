@@ -1,12 +1,11 @@
 <?php
 
-namespace Codewiser\Otp;
+namespace Codewiser\Otp\Middleware;
 
 use Closure;
 use Codewiser\Otp\Contracts\MustVerifyEmailWithOtp;
+use Codewiser\Otp\OtpService;
 use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
-use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
 
 class EnsureOtpIsPassed extends EnsureEmailIsVerified
 {

@@ -1,8 +1,9 @@
 <?php
 
-namespace Codewiser\Otp;
+namespace Codewiser\Otp\RateLimiter;
 
 use Closure;
+use Codewiser\Otp\OtpService;
 use Exception;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;

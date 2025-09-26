@@ -1,7 +1,7 @@
 <?php
 
-use Codewiser\Otp\OtpController;
-use Codewiser\Otp\Throttle;
+use Codewiser\Otp\Controllers\OtpController;
+use Codewiser\Otp\RateLimiter\Throttle;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('web')->group(function () {

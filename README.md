@@ -36,10 +36,9 @@ _Providers/OtpServiceProvider.php_
 
 namespace App\Providers;
 
-use Codewiser\Otp\OtpLimit;
 use Codewiser\Otp\OtpService;
-use Codewiser\Otp\Throttle;
-use Illuminate\Cache\RateLimiting\Limit;
+use Codewiser\Otp\RateLimiter\OtpLimit;
+use Codewiser\Otp\RateLimiter\Throttle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -123,7 +122,7 @@ To protect stateless (`api`) requests keep using
 _routes/web.php_
 
 ```php
-use Codewiser\Otp\EnsureOtpIsPassed;
+use Codewiser\Otp\Middleware\EnsureOtpIsPassed;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', EnsureOtpIsPassed::class])->group(function () {

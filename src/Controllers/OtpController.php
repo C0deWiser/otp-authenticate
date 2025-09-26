@@ -1,13 +1,12 @@
 <?php
 
-namespace Codewiser\Otp;
+namespace Codewiser\Otp\Controllers;
 
-use Illuminate\Contracts\Support\Responsable;
-use Illuminate\Contracts\View\View;
+use Codewiser\Otp\OtpService;
+use Codewiser\Otp\RateLimiter\OtpRateLimiter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\RateLimiter;
 
 class OtpController
 {

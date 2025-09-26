@@ -2,11 +2,9 @@
 
 namespace App\Providers;
 
-use Codewiser\Otp\OtpLimit;
-use Codewiser\Otp\OtpRateLimiter;
 use Codewiser\Otp\OtpService;
-use Codewiser\Otp\Throttle;
-use Illuminate\Cache\RateLimiting\Limit;
+use Codewiser\Otp\RateLimiter\OtpLimit;
+use Codewiser\Otp\RateLimiter\Throttle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
