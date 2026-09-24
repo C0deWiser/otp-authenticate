@@ -77,6 +77,11 @@ class OtpServiceProvider extends ServiceProvider
 Predefined `otp` routes are protected with `throttle` middleware using names 
 mentioned above. 
 
+Any `Limit` you register for these names is automatically decorated at 
+runtime: instead of a bare `429` response, a throttled user is redirected 
+back to the form with a `status` of `OtpService::OTP_THROTTLE` and a
+human-readable `delay`.
+
 ### Otp service constructor
 
 `OtpService` class constructor has one optional parameter. It is a string in

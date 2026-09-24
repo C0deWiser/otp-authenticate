@@ -6,20 +6,20 @@ use Codewiser\Otp\OtpService;
 use Codewiser\Otp\RateLimiter\Throttle;
 use Codewiser\Otp\Tests\Fakes\User;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Cache\RateLimiter;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\RateLimiter;
 
 class OtpControllerTest extends TestCase
 {
-    protected function setUp(): void
+    protected function getEnvironmentSetUp($app)
     {
-        parent::setUp();
+        parent::getEnvironmentSetUp($app);
 
-        RateLimiter::for(Throttle::issue, fn (Request $request) => [
+        $app->make(RateLimiter::class)->for(Throttle::issue, fn (Request $request) => [
             Limit::perMinute(30)->by($request->user()?->getAuthIdentifier() ?: 'guest'),
         ]);
 
-        RateLimiter::for(Throttle::verify, fn (Request $request) => [
+        $app->make(RateLimiter::class)->for(Throttle::verify, fn (Request $request) => [
             Limit::perMinute(30)->by($request->user()?->getAuthIdentifier() ?: 'guest'),
         ]);
     }
