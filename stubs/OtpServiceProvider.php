@@ -3,8 +3,8 @@
 namespace App\Providers;
 
 use Codewiser\Otp\OtpService;
-use Codewiser\Otp\RateLimiter\OtpLimit;
 use Codewiser\Otp\RateLimiter\Throttle;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -26,13 +26,15 @@ class OtpServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Named RateLimiter for issuing otp code
         RateLimiter::for(Throttle::issue, fn(Request $request) => [
-            OtpLimit::perMinute(1)->for(Throttle::issue)->by('minute:'.$request->user()->id),
-            OtpLimit::perDay(15)->for(Throttle::issue)->by('day:'.$request->user()->id),
+            // Limit::perMinute(1)->by('minute:'.$request->user()->id),
+            // Limit::perDay(15)->by('day:'.$request->user()->id),
         ]);
 
+        // Named RateLimiter for verifying otp code (bruteforce protection)
         RateLimiter::for(Throttle::verify, fn(Request $request) => [
-            OtpLimit::perDay(30)->for(Throttle::verify)->by($request->user()->id)
+            // Limit::perDay(30)->by($request->user()->id)
         ]);
     }
 }

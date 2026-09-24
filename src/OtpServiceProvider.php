@@ -12,10 +12,11 @@ class OtpServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->loadViewsFrom(__DIR__.'/../resources/views', 'otp');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
 
         $this->publishes([
-            __DIR__.'/../resources/views/auth'         => resource_path('views/auth'),
+            __DIR__.'/../resources/views'              => resource_path('views/vendor/otp'),
             __DIR__.'/../stubs/OtpServiceProvider.php' => app_path('Providers/OtpServiceProvider.php'),
         ], 'otp');
 

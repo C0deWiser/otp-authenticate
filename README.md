@@ -16,13 +16,17 @@ The authentication process will be:
 
 ## Installation
 
-Install service.
+Install service. Publish Service Provider and view.
 
 ```php
 composer require codewiser/otp-authenticate
 
-php artisan otp:install
+php artisan vendor:publish --tag=otp
 ```
+
+Register `\App\Providers\OtpServiceProvider` to `bootstrap/providers.php` file.
+
+Customize view published to `resources/views/vendor/otp`.
 
 ### Service Provider
 
@@ -37,7 +41,6 @@ _Providers/OtpServiceProvider.php_
 namespace App\Providers;
 
 use Codewiser\Otp\OtpService;
-use Codewiser\Otp\RateLimiter\OtpLimit;
 use Codewiser\Otp\RateLimiter\Throttle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -61,21 +64,18 @@ class OtpServiceProvider extends ServiceProvider
     public function boot(): void
     {
         RateLimiter::for(Throttle::issue, fn(Request $request) => [
-            OtpLimit::perMinute(1)->for(Throttle::issue)->by('minute:'.$request->user()->id),
-            OtpLimit::perDay(15)->for(Throttle::issue)->by('day:'.$request->user()->id),
+            // Rate Limits for issuing new otp code
         ]);
 
         RateLimiter::for(Throttle::verify, fn(Request $request) => [
-            OtpLimit::perDay(30)->for(Throttle::verify)->by($request->user()->id)
+            // Rate Limits for verifying otp code (bruteforce protection)
         ]);
     }
 }
 ```
 
-As you can see, we use extended `OtpLimit` with custom response that returns 
-user back to the previous page with a throttle message.
-
-You may use base `Limit` as well.
+Predefined `otp` routes are protected with `throttle` middleware using names 
+mentioned above. 
 
 ### Otp service constructor
 
@@ -114,7 +114,7 @@ class User extends Authenticatable implements MustVerifyEmailWithOtp {
 
 ### Protecting routes
 
-Use `EnsureOtpIsPassed` middleware to protect only stateful (`web`) requests.
+Use `EnsureOtpIsPassed` middleware to protect only(!) stateful (`web`) requests.
 
 To protect stateless (`api`) requests keep using 
 `EnsureEmailIsVerified` (aka `verified`) middleware.
@@ -132,9 +132,10 @@ Route::middleware(['auth', EnsureOtpIsPassed::class])->group(function () {
 
 ## Customization
 
-You may change published blade template, or you may register custom view.
-You may register custom function to generate otp codes.
-And you may register custom function for composing a notification.
+You may change published blade template (see `resources/views/vendor/otp`), 
+or you may register custom view. You may register custom function to 
+generate otp codes. And you may register custom function for composing a 
+notification.
 
 ```php
 use Codewiser\Otp\OtpService;
@@ -148,7 +149,7 @@ class OtpServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        OtpService::view(fn() => view('auth.custom-view'));
+        OtpService::view(fn() => view('otp.custom-view'));
         
         OtpService::newCodeUsing(fn() => rand(1000, 9999));
         

@@ -7,6 +7,9 @@ use Illuminate\Console\Command;
 use Illuminate\Support\ServiceProvider;
 use Symfony\Component\Console\Attribute\AsCommand;
 
+/**
+ * @deprecated
+ */
 #[AsCommand(name: 'otp:install')]
 class InstallCommand extends Command
 {

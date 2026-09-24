@@ -8,6 +8,7 @@ use DateInterval;
 use Exception;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Contracts\Session\Session;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -36,7 +37,7 @@ class OtpService
     /**
      * Set a callback that should be used for otp generation.
      *
-     * @param  callable():string  $callback
+     * @param  callable(): string  $callback
      */
     public static function newCodeUsing(callable $callback): void
     {
@@ -45,6 +46,8 @@ class OtpService
 
     /**
      * Set a view for user-form.
+     *
+     * @param  string|callable(): View  $view
      */
     public static function view(callable|string $view): void
     {
@@ -71,7 +74,7 @@ class OtpService
             return view(self::$view, $data);
         }
 
-        return view('auth.otp-email', $data);
+        return view('otp::verify-email', $data);
     }
 
     /**
