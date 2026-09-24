@@ -44,7 +44,7 @@ class InstallCommand extends Command
     }
 
     /**
-     * Register the Fortify service provider in the application configuration file.
+     * Register the otp service provider in the application configuration file.
      */
     protected function registerOtpServiceProvider(): void
     {

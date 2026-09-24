@@ -9,6 +9,9 @@
         }
     },
   "autoload-dev": {
+    "psr-4": {
+      "Codewiser\\Otp\\Tests\\": "tests/"
+    },
     "classmap": ["stubs/"]
   },
     "authors": [
@@ -22,7 +25,10 @@
       "php": "^8.3"
     },
     "require-dev": {
-        "laravel/framework": "^13.0"
+        "laravel/framework": "^13.0",
+        "orchestra/testbench": "^11.3",
+        "phpunit/phpunit": "^12.0",
+        "mockery/mockery": "^1.6"
     },
   "extra": {
     "laravel": {

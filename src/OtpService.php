@@ -45,7 +45,7 @@ class OtpService
     }
 
     /**
-     * Set a view for user-form.
+     * Set a view for the user form.
      *
      * @param  string|callable(): View  $view
      */
@@ -78,7 +78,7 @@ class OtpService
     }
 
     /**
-     * Check if user email needs to be re-verified?
+     * Check if the user email needs to be re-verified.
      *
      * @throws Exception when the duration cannot be parsed as an interval.
      */
@@ -170,9 +170,9 @@ class OtpService
             ]);
         }
 
-        if ($code != $storedOtp) {
+        if ($code !== $storedOtp) {
 
-            $this->logger?->warning("Otp mismatch $code != $storedOtp");
+            $this->logger?->warning("Otp mismatch");
 
             throw ValidationException::withMessages([
                 'otp' => __(self::OTP_MISMATCH)
@@ -219,7 +219,7 @@ class OtpService
             $otp = $this->newCode($session);
             $user->sendOtpNotification($otp);
 
-            $this->logger?->debug("Otp sent: $otp");
+            $this->logger?->debug("Otp sent");
 
             return self::OTP_SENT;
         }

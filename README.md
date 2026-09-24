@@ -1,7 +1,7 @@
 # One time passwords for Laravel
 
-In a very simple case, our Laravel applications authenticates users by login 
-and password. Sometimes we force our applications to verify user's emails.
+In a very simple case, our Laravel applications authenticate users by login 
+and password. Sometimes we force our applications to verify users' emails.
 
 This package requires users to periodically re-verify emails using one time 
 passwords.
@@ -26,7 +26,7 @@ php artisan vendor:publish --tag=otp
 
 Register `\App\Providers\OtpServiceProvider` to `bootstrap/providers.php` file.
 
-Customize view published to `resources/views/vendor/otp`.
+Customize the view published to `resources/views/vendor/otp`.
 
 ### Service Provider
 
@@ -87,15 +87,15 @@ For example, if we define `new OtpService('P1M')`, users will sign in
 using otp at least once a month.
 
 Empty constructor `new OtpService()` means that every authentication process 
-accompanied by otp.
+is accompanied by an otp.
 
 > Either way, the otp process will be invoked no more often than once 
 > during user session.
 
 ### Otp user contract
 
-Apply `MustVerifyEmailWithOtp` contract and `MustVerifyEmailWithOtp` trait 
-to a `User` model. These contract and trait extends well known 
+Apply the `MustVerifyEmailWithOtp` contract and the `MustVerifyEmailWithOtp` 
+trait to a `User` model. This contract and trait extend the well known 
 `MustVerifyEmail`.
 
 _Models/User.php_
@@ -114,9 +114,9 @@ class User extends Authenticatable implements MustVerifyEmailWithOtp {
 
 ### Protecting routes
 
-Use `EnsureOtpIsPassed` middleware to protect only(!) stateful (`web`) requests.
+Use the `EnsureOtpIsPassed` middleware to protect only stateful (`web`) requests.
 
-To protect stateless (`api`) requests keep using 
+To protect stateless (`api`) requests, keep using 
 `EnsureEmailIsVerified` (aka `verified`) middleware.
 
 _routes/web.php_
@@ -132,9 +132,9 @@ Route::middleware(['auth', EnsureOtpIsPassed::class])->group(function () {
 
 ## Customization
 
-You may change published blade template (see `resources/views/vendor/otp`), 
-or you may register custom view. You may register custom function to 
-generate otp codes. And you may register custom function for composing a 
+You may change the published blade template (see `resources/views/vendor/otp`), 
+or you may register a custom view. You may register a custom function to 
+generate otp codes. And you may register a custom function for composing a 
 notification.
 
 ```php

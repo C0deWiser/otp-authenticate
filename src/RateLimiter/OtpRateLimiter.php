@@ -49,9 +49,13 @@ class OtpRateLimiter
      */
     public function limits(): array
     {
-        $limits = call_user_func(
-            RateLimiter::limiter($this->name), $this->request
-        );
+        $limiter = RateLimiter::limiter($this->name);
+
+        if (! $limiter) {
+            return [];
+        }
+
+        $limits = call_user_func($limiter, $this->request);
 
         $limits = is_array($limits) ? $limits : [$limits];
 
@@ -98,7 +102,7 @@ class OtpRateLimiter
         try {
             return $diff->forHumans(short: $short, parts: $parts);
         } catch (Exception) {
-            return $availableIn;
+            return (string) $availableIn;
         }
     }
 
