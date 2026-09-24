@@ -3,16 +3,35 @@
 namespace Codewiser\Otp;
 
 use Codewiser\Otp\Console\InstallCommand;
+use Codewiser\Otp\Contracts\CodeVerifiedResponse;
+use Codewiser\Otp\Contracts\SendRequestResponse;
+use Codewiser\Otp\Http\Responses\CodeSent;
+use Codewiser\Otp\Http\Responses\CodeVerified;
 use Codewiser\Otp\RateLimiter\OtpRateLimiter;
-use Codewiser\Otp\RateLimiter\Throttle;
+use Illuminate\Cache\RateLimiter;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Cache\RateLimiting\Unlimited;
-use Illuminate\Cache\RateLimiter;
 use Illuminate\Http\Request;
 use Illuminate\Support\ServiceProvider;
 
 class OtpServiceProvider extends ServiceProvider
 {
+    /**
+     * Register any application services.
+     */
+    public function register(): void
+    {
+        $this->app->singleton(
+            SendRequestResponse::class,
+            CodeSent::class
+        );
+
+        $this->app->singleton(
+            CodeVerifiedResponse::class,
+            CodeVerified::class
+        );
+    }
+
     /**
      * Bootstrap any package services.
      */
@@ -29,7 +48,7 @@ class OtpServiceProvider extends ServiceProvider
         $this->app->booted(function () {
             $rateLimiter = $this->app->make(RateLimiter::class);
 
-            foreach (Throttle::cases() as $throttle) {
+            foreach ([OtpRateLimiter::ISSUE, OtpRateLimiter::VERIFY] as $throttle) {
                 $original = $rateLimiter->limiter($throttle);
 
                 if (! $original) {
@@ -44,13 +63,10 @@ class OtpServiceProvider extends ServiceProvider
                     }
 
                     return array_map(
-                        static fn (Limit $limit) => $limit->responseCallback
+                        static fn(Limit $limit) => $limit->responseCallback
                             ? $limit
                             : $limit->response(
-                                fn (Request $request, array $headers) => redirect()
-                                    ->back(302, $headers)
-                                    ->with('status', OtpService::OTP_THROTTLE)
-                                    ->with('delay', OtpRateLimiter::for($throttle, $request)->forHumans())
+                                OtpRateLimiter::for($throttle, $request)->response()
                             ),
                         (array) $limits
                     );

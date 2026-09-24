@@ -3,9 +3,10 @@
 namespace Codewiser\Otp\RateLimiter;
 
 use Closure;
-use Codewiser\Otp\OtpService;
+use Codewiser\Otp\Otp;
 use Exception;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\RateLimiter;
@@ -15,22 +16,15 @@ use Illuminate\Support\Facades\RateLimiter;
  */
 class OtpRateLimiter
 {
-    public static function for(Throttle $name, Request $request): static
+    const string ISSUE = 'otp-issue';
+    const string VERIFY = 'otp-verify';
+
+    public static function for(string $name, Request $request): static
     {
         return new static($name, $request);
     }
 
-    public static function forIssuing(Request $request): static
-    {
-        return new static(Throttle::issue, $request);
-    }
-
-    public static function forVerifying(Request $request): static
-    {
-        return new static(Throttle::verify, $request);
-    }
-
-    public function __construct(public Throttle $name, public Request $request)
+    public function __construct(public string $name, public Request $request)
     {
         //
     }
@@ -61,7 +55,7 @@ class OtpRateLimiter
 
         return array_map(
             fn(Limit $limit) => [
-                'key'              => md5($this->name->value.$limit->key),
+                'key'              => md5($this->name.$limit->key),
                 'maxAttempts'      => $limit->maxAttempts,
                 'decaySeconds'     => $limit->decaySeconds,
                 'responseCallback' => $limit->responseCallback,
@@ -111,9 +105,11 @@ class OtpRateLimiter
      */
     public function response(): Closure
     {
-        return fn(Request $request, array $headers) => redirect()
-            ->back(302, $headers)
-            ->with('status', OtpService::OTP_THROTTLE)
-            ->with('delay', $this->forHumans());
+        return fn(Request $request, array $headers) => $request->expectsJson()
+            ? new JsonResponse(['message' => trans(Otp::OTP_THROTTLE)], 429, $headers)
+            : redirect()
+                ->back(302, $headers)
+                ->with('status', Otp::OTP_THROTTLE)
+                ->with('delay', $this->forHumans());
     }
 }

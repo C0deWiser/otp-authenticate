@@ -2,12 +2,16 @@
 
 namespace App\Providers;
 
-use Codewiser\Otp\OtpService;
-use Codewiser\Otp\RateLimiter\Throttle;
+use Codewiser\Otp\Otp;
+use Codewiser\Otp\OtpAuthenticate;
+use Codewiser\Otp\OtpVerify;
+use Codewiser\Otp\RateLimiter\OtpRateLimiter;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Fortify\Fortify;
 
 class OtpServiceProvider extends ServiceProvider
 {
@@ -16,8 +20,14 @@ class OtpServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->singleton(OtpService::class,
-            fn($app) => new OtpService()
+        $this->app->singleton(OtpAuthenticate::class,
+            fn($app) => new OtpAuthenticate(
+                Auth::createUserProvider('users'),
+                Auth::guard('web')
+            ));
+
+        $this->app->singleton(OtpVerify::class,
+            fn($app) => new OtpVerify('P1Y')
         );
     }
 
@@ -26,15 +36,32 @@ class OtpServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Named RateLimiter for issuing otp code
-        RateLimiter::for(Throttle::issue, fn(Request $request) => [
-            // Limit::perMinute(1)->by('minute:'.$request->user()->id),
-            // Limit::perDay(15)->by('day:'.$request->user()->id),
-        ]);
+        Otp::loginView('otp::login');
+        Otp::verifyEmailView('otp::verify-email');
 
-        // Named RateLimiter for verifying otp code (bruteforce protection)
-        RateLimiter::for(Throttle::verify, fn(Request $request) => [
-            // Limit::perDay(30)->by($request->user()->id)
-        ]);
+        RateLimiter::for(OtpRateLimiter::ISSUE, function (Request $request) {
+
+            $throttleKey =
+                $request->user()?->id.'|'.
+                $request->input(Fortify::email()).'|'.
+                $request->ip();
+
+            return [
+                Limit::perMinute(1)->by('minute:'.$throttleKey),
+                Limit::perDay(15)->by('day:'.$throttleKey),
+            ];
+        });
+
+        RateLimiter::for(OtpRateLimiter::VERIFY, function (Request $request) {
+
+            $throttleKey =
+                $request->user()?->id.'|'.
+                $request->input(Fortify::email()).'|'.
+                $request->ip();
+
+            return [
+                Limit::perDay(30)->by($throttleKey)
+            ];
+        });
     }
 }

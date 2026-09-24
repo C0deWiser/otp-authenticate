@@ -2,24 +2,27 @@
 
 namespace Codewiser\Otp\Tests;
 
-use Codewiser\Otp\OtpService;
-use Codewiser\Otp\RateLimiter\Throttle;
+use Codewiser\Otp\Otp;
+use Codewiser\Otp\OtpVerify;
+use Codewiser\Otp\RateLimiter\OtpRateLimiter;
 use Codewiser\Otp\Tests\Fakes\User;
-use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Cache\RateLimiter;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 
-class OtpControllerTest extends TestCase
+class RevalidateControllerTest extends TestCase
 {
     protected function getEnvironmentSetUp($app)
     {
         parent::getEnvironmentSetUp($app);
 
-        $app->make(RateLimiter::class)->for(Throttle::issue, fn (Request $request) => [
+        $app->instance(OtpVerify::class, new OtpVerify('P1W'));
+
+        $app->make(RateLimiter::class)->for(OtpRateLimiter::ISSUE, fn (Request $request) => [
             Limit::perMinute(30)->by($request->user()?->getAuthIdentifier() ?: 'guest'),
         ]);
 
-        $app->make(RateLimiter::class)->for(Throttle::verify, fn (Request $request) => [
+        $app->make(RateLimiter::class)->for(OtpRateLimiter::VERIFY, fn (Request $request) => [
             Limit::perMinute(30)->by($request->user()?->getAuthIdentifier() ?: 'guest'),
         ]);
     }
@@ -55,9 +58,9 @@ class OtpControllerTest extends TestCase
             ->post('/email/otp')
             ->assertRedirect();
 
-        $this->assertTrue(session()->has('otp'));
-        $this->assertSame(OtpService::OTP_SENT, session('status'));
+        $this->assertSame(Otp::OTP_SENT, session('status'));
         $this->assertCount(1, $user->sentOtps);
+        $this->assertMatchesRegularExpression('/^\d{6}$/', $user->sentOtps[0]);
     }
 
     public function test_verify_accepts_the_right_code()
@@ -67,14 +70,13 @@ class OtpControllerTest extends TestCase
         $this->actingAs($user);
         $this->post('/email/otp');
 
-        $code = session('otp');
+        $code = $user->sentOtps[0];
 
         $this->put('/email/otp', ['otp' => $code])
             ->assertRedirect('/');
 
         $this->assertTrue(session()->get('otp_passed'));
         $this->assertTrue($user->emailVerified);
-        $this->assertFalse(session()->has('otp'));
     }
 
     public function test_verify_rejects_a_wrong_code()
@@ -99,7 +101,7 @@ class OtpControllerTest extends TestCase
             ->put('/email/otp', ['otp' => '123456'])
             ->assertSessionHasErrors('otp');
 
-        $this->assertTrue(session()->has('otp'));
         $this->assertCount(1, $user->sentOtps);
+        $this->assertMatchesRegularExpression('/^\d{6}$/', $user->sentOtps[0]);
     }
 }

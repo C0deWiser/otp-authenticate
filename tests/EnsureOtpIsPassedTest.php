@@ -2,8 +2,9 @@
 
 namespace Codewiser\Otp\Tests;
 
-use Codewiser\Otp\Middleware\EnsureOtpIsPassed;
-use Codewiser\Otp\OtpService;
+use Codewiser\Otp\Http\Middleware\EnsureOtpIsPassed;
+use Codewiser\Otp\Otp;
+use Codewiser\Otp\OtpVerify;
 use Codewiser\Otp\Tests\Fakes\PlainUser;
 use Codewiser\Otp\Tests\Fakes\User;
 use Illuminate\Support\Carbon;
@@ -15,7 +16,7 @@ class EnsureOtpIsPassedTest extends TestCase
     {
         parent::setUp();
 
-        $this->app->instance(OtpService::class, new OtpService('P1W'));
+        $this->app->instance(OtpVerify::class, new OtpVerify('P1W'));
 
         Route::middleware(['web', EnsureOtpIsPassed::class])
             ->get('/otp-protected', fn () => 'protected content');
@@ -30,9 +31,9 @@ class EnsureOtpIsPassedTest extends TestCase
             ->get('/otp-protected')
             ->assertRedirect('/email/otp');
 
-        $this->assertTrue(session()->has('otp'));
-        $this->assertSame(OtpService::OTP_SENT, session('status'));
+        $this->assertSame(Otp::OTP_SENT, session('status'));
         $this->assertCount(1, $user->sentOtps);
+        $this->assertMatchesRegularExpression('/^\d{6}$/', $user->sentOtps[0]);
     }
 
     public function test_lets_user_in_when_otp_was_passed()

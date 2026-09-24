@@ -1,15 +1,15 @@
 <?php
 
-namespace Codewiser\Otp\Middleware;
+namespace Codewiser\Otp\Http\Middleware;
 
 use Closure;
 use Codewiser\Otp\Contracts\MustVerifyEmailWithOtp;
-use Codewiser\Otp\OtpService;
+use Codewiser\Otp\OtpVerify;
 use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
 
 class EnsureOtpIsPassed extends EnsureEmailIsVerified
 {
-    public function __construct(public OtpService $otp)
+    public function __construct(public OtpVerify $otp)
     {
         //
     }

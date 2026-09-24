@@ -2,11 +2,12 @@
 
 namespace Codewiser\Otp\Tests;
 
-use Codewiser\Otp\OtpService;
-use Codewiser\Otp\RateLimiter\Throttle;
+use Codewiser\Otp\Otp;
+use Codewiser\Otp\OtpVerify;
+use Codewiser\Otp\RateLimiter\OtpRateLimiter;
 use Codewiser\Otp\Tests\Fakes\User;
-use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Cache\RateLimiter;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 
 class OtpThrottleTest extends TestCase
@@ -15,11 +16,13 @@ class OtpThrottleTest extends TestCase
     {
         parent::getEnvironmentSetUp($app);
 
-        $app->make(RateLimiter::class)->for(Throttle::issue, fn (Request $request) => [
+        $app->instance(OtpVerify::class, new OtpVerify('P1W'));
+
+        $app->make(RateLimiter::class)->for(OtpRateLimiter::ISSUE, fn (Request $request) => [
             Limit::perMinute(1)->by('user:'.$request->user()?->getAuthIdentifier()),
         ]);
 
-        $app->make(RateLimiter::class)->for(Throttle::verify, fn (Request $request) => [
+        $app->make(RateLimiter::class)->for(OtpRateLimiter::VERIFY, fn (Request $request) => [
             Limit::perMinute(1)->by('user:'.$request->user()?->getAuthIdentifier())
                 ->response(fn () => response('custom throttled', 429)),
         ]);
@@ -28,7 +31,7 @@ class OtpThrottleTest extends TestCase
     public function test_plain_limit_is_decorated_at_runtime()
     {
         $limits = $this->app->make(RateLimiter::class)
-            ->limiter(Throttle::issue)(Request::create('/email/otp', 'POST'));
+            ->limiter(OtpRateLimiter::ISSUE)(Request::create('/email/otp', 'POST'));
 
         $this->assertCount(1, $limits);
         $this->assertIsCallable($limits[0]->responseCallback);
@@ -36,16 +39,21 @@ class OtpThrottleTest extends TestCase
 
     public function test_throttled_user_gets_redirect_with_delay_instead_of_429()
     {
-        $this->actingAs(new User);
+        $user = new User;
+
+        $this->actingAs($user);
 
         $this->post('/email/otp')
-            ->assertSessionHas('otp');
+            ->assertRedirect();
+
+        $this->assertCount(1, $user->sentOtps);
 
         $response = $this->post('/email/otp');
 
         $response->assertStatus(302);
-        $response->assertSessionHas('status', OtpService::OTP_THROTTLE);
+        $response->assertSessionHas('status', Otp::OTP_THROTTLE);
         $response->assertSessionHas('delay');
+        $this->assertCount(1, $user->sentOtps);
     }
 
     public function test_throttle_response_carries_rate_limit_headers()

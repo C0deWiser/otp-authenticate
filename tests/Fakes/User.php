@@ -10,6 +10,10 @@ class User implements Authenticatable, MustVerifyEmailWithOtp
 {
     public int $id;
 
+    public string $email = 'user@example.com';
+
+    public string $username = 'johndoe';
+
     public array $sentOtps = [];
 
     public bool $emailVerified = false;
@@ -82,7 +86,7 @@ class User implements Authenticatable, MustVerifyEmailWithOtp
 
     public function getEmailForVerification(): string
     {
-        return 'user@example.com';
+        return $this->email;
     }
 
     public function getEmailVerifiedAt(): ?DateTimeInterface

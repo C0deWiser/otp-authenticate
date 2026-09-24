@@ -3,13 +3,17 @@
 namespace Codewiser\Otp\Tests;
 
 use Codewiser\Otp\OtpServiceProvider;
+use Laravel\Fortify\FortifyServiceProvider;
 use Orchestra\Testbench\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
 {
     protected function getPackageProviders($app)
     {
-        return [OtpServiceProvider::class];
+        return [
+            FortifyServiceProvider::class,
+            OtpServiceProvider::class,
+        ];
     }
 
     protected function getEnvironmentSetUp($app)

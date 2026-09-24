@@ -3,7 +3,6 @@
 namespace Codewiser\Otp\Tests;
 
 use Codewiser\Otp\RateLimiter\OtpRateLimiter;
-use Codewiser\Otp\RateLimiter\Throttle;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -14,14 +13,14 @@ class OtpRateLimiterTest extends TestCase
     {
         parent::setUp();
 
-        RateLimiter::for(Throttle::issue, fn (Request $request) => [
+        RateLimiter::for(OtpRateLimiter::ISSUE, fn (Request $request) => [
             Limit::perMinute(2)->by('test-user'),
         ]);
     }
 
     private function limiter(): OtpRateLimiter
     {
-        return OtpRateLimiter::forIssuing(Request::create('/email/otp', 'GET'));
+        return OtpRateLimiter::for(OtpRateLimiter::ISSUE, Request::create('/email/otp', 'GET'));
     }
 
     public function test_limits_have_expected_structure()
@@ -50,7 +49,7 @@ class OtpRateLimiterTest extends TestCase
 
     public function test_available_in_is_zero_when_limiter_is_not_registered()
     {
-        $limiter = OtpRateLimiter::for(Throttle::verify, Request::create('/email/otp', 'GET'));
+        $limiter = OtpRateLimiter::for(OtpRateLimiter::VERIFY, Request::create('/email/otp', 'GET'));
 
         $this->assertSame(0, $limiter->availableIn());
     }
