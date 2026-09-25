@@ -4,15 +4,20 @@ namespace Codewiser\Otp;
 
 use Codewiser\Otp\Console\InstallCommand;
 use Codewiser\Otp\Contracts\CodeVerifiedResponse;
-use Codewiser\Otp\Contracts\SendRequestResponse;
+use Codewiser\Otp\Contracts\CodeSentResponse;
+use Codewiser\Otp\Contracts\LoginViewResponse;
+use Codewiser\Otp\Contracts\ThrottledResponse;
+use Codewiser\Otp\Contracts\VerifyEmailViewResponse;
 use Codewiser\Otp\Http\Responses\CodeSent;
 use Codewiser\Otp\Http\Responses\CodeVerified;
+use Codewiser\Otp\Http\Responses\Throttled;
 use Codewiser\Otp\RateLimiter\OtpRateLimiter;
 use Illuminate\Cache\RateLimiter;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Cache\RateLimiting\Unlimited;
 use Illuminate\Http\Request;
 use Illuminate\Support\ServiceProvider;
+use Psr\Log\LoggerInterface;
 
 class OtpServiceProvider extends ServiceProvider
 {
@@ -21,15 +26,15 @@ class OtpServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->singleton(
-            SendRequestResponse::class,
-            CodeSent::class
-        );
+        $this->app->singleton(CodeSentResponse::class, CodeSent::class);
+        $this->app->singleton(ThrottledResponse::class, Throttled::class);
+        $this->app->singleton(CodeVerifiedResponse::class, CodeVerified::class);
 
-        $this->app->singleton(
-            CodeVerifiedResponse::class,
-            CodeVerified::class
-        );
+        $this->app->extend(CodeSentResponse::class, fn($object) => $this->withLogger($object, logger()));
+        $this->app->extend(LoginViewResponse::class, fn($object) => $this->withLogger($object, logger()));
+        $this->app->extend(ThrottledResponse::class, fn($object) => $this->withLogger($object, logger()));
+        $this->app->extend(CodeVerifiedResponse::class, fn($object) => $this->withLogger($object, logger()));
+        $this->app->extend(VerifyEmailViewResponse::class, fn($object) => $this->withLogger($object, logger()));
     }
 
     /**
@@ -48,39 +53,19 @@ class OtpServiceProvider extends ServiceProvider
             __DIR__.'/../stubs/OtpServiceProvider.php' => app_path('Providers/OtpServiceProvider.php'),
         ], 'otp');
 
-        $this->app->booted(function () {
-            $rateLimiter = $this->app->make(RateLimiter::class);
-
-            foreach ([OtpRateLimiter::ISSUE, OtpRateLimiter::VERIFY] as $throttle) {
-                $original = $rateLimiter->limiter($throttle);
-
-                if (! $original) {
-                    continue;
-                }
-
-                $rateLimiter->for($throttle, static function (Request $request) use ($original, $throttle) {
-                    $limits = $original($request);
-
-                    if ($limits instanceof Unlimited) {
-                        return $limits;
-                    }
-
-                    return array_map(
-                        static fn(Limit $limit) => $limit->responseCallback
-                            ? $limit
-                            : $limit->response(
-                                OtpRateLimiter::for($throttle, $request)->response()
-                            ),
-                        (array) $limits
-                    );
-                });
-            }
-        });
-
         if ($this->app->runningInConsole()) {
             $this->commands([
                 InstallCommand::class
             ]);
         }
+    }
+
+    protected function withLogger(object $object, LoggerInterface $logger): object
+    {
+        if (method_exists($object, 'setLogger')) {
+            $object->setLogger($logger);
+        }
+
+        return $object;
     }
 }

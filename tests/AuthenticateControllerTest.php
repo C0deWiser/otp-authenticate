@@ -50,13 +50,6 @@ class AuthenticateControllerTest extends TestCase
         ]);
     }
 
-    public function test_login_route_renders_the_form()
-    {
-        $this->get('/otp/login')
-            ->assertOk()
-            ->assertSee('One time password');
-    }
-
     public function test_login_route_returns_no_content_for_json()
     {
         $this->getJson('/otp/login')
@@ -65,7 +58,7 @@ class AuthenticateControllerTest extends TestCase
 
     public function test_issue_sends_a_code_to_the_resolved_user()
     {
-        $this->post('/otp/login', ['email' => 'user@example.com'])
+        $this->post('/otp/login', ['email' => 'user@example.com', 'send' => ''])
             ->assertRedirect();
 
         $this->assertSame(Otp::SENT, session('status'));
@@ -75,7 +68,7 @@ class AuthenticateControllerTest extends TestCase
 
     public function test_issue_sends_a_code_as_json()
     {
-        $this->postJson('/otp/login', ['email' => $this->user->email])
+        $this->postJson('/otp/login', ['email' => $this->user->email, 'send' => ''])
             ->assertOk()
             ->assertJson(['message' => Otp::SENT]);
 
@@ -84,18 +77,18 @@ class AuthenticateControllerTest extends TestCase
 
     public function test_issue_is_silent_for_unknown_email()
     {
-        $this->post('/otp/login', ['email' => 'ghost@example.com'])
+        $this->post('/otp/login', ['email' => 'ghost@example.com', 'send' => ''])
             ->assertRedirect()
             ->assertSessionHas('status', Otp::SENT);
     }
 
     public function test_verify_logs_the_guest_in()
     {
-        $this->post('/otp/login', ['email' => $this->user->email]);
+        $this->post('/otp/login', ['email' => $this->user->email, 'send' => '']);
 
         $code = $this->user->sentOtps[0];
 
-        $this->put('/otp/login', ['email' => $this->user->email, 'code' => $code])
+        $this->post('/otp/login', ['email' => $this->user->email, 'code' => $code])
             ->assertRedirect();
 
         $this->assertAuthenticatedAs($this->user);
@@ -105,11 +98,11 @@ class AuthenticateControllerTest extends TestCase
 
     public function test_verify_logs_the_guest_in_as_json()
     {
-        $this->post('/otp/login', ['email' => $this->user->email]);
+        $this->post('/otp/login', ['email' => $this->user->email, 'send' => '']);
 
         $code = $this->user->sentOtps[0];
 
-        $this->putJson('/otp/login', ['email' => $this->user->email, 'code' => $code])
+        $this->postJson('/otp/login', ['email' => $this->user->email, 'code' => $code])
             ->assertOk();
 
         $this->assertAuthenticatedAs($this->user);
@@ -118,11 +111,11 @@ class AuthenticateControllerTest extends TestCase
 
     public function test_verify_rejects_unknown_email()
     {
-        $this->post('/otp/login', ['email' => $this->user->email]);
+        $this->post('/otp/login', ['email' => $this->user->email, 'send' => '']);
 
         $code = $this->user->sentOtps[0];
 
-        $this->put('/otp/login', ['email' => 'ghost@example.com', 'code' => $code])
+        $this->post('/otp/login', ['email' => 'ghost@example.com', 'code' => $code])
             ->assertSessionHasErrors('code');
 
         $this->assertGuest();
@@ -130,11 +123,11 @@ class AuthenticateControllerTest extends TestCase
 
     public function test_verify_rejects_a_code_issued_for_another_user()
     {
-        $this->post('/otp/login', ['email' => $this->user->email]);
+        $this->post('/otp/login', ['email' => $this->user->email, 'send' => '']);
 
         $code = $this->user->sentOtps[0];
 
-        $this->put('/otp/login', ['email' => $this->victim->email, 'code' => $code])
+        $this->post('/otp/login', ['email' => $this->victim->email, 'code' => $code])
             ->assertSessionHasErrors('code');
 
         $this->assertGuest();

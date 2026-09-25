@@ -1,31 +1,40 @@
+@php use Codewiser\Otp\Http\Controllers\AuthenticatedSessionController; @endphp
 @extends('fortify::layouts.fortify')
 
-@section('title', __('One time password authentication'))
+@section('title', __('Authentication'))
 
 @section('content')
 
-    <h1>@lang('One time password authentication')</h1>
+    <h1>@lang('Authentication')</h1>
+
+    <p class="notice">
+        @lang('Authenticate with one time password. Provide your email address and we will send you a code.')
+    </p>
+
+    <p class="alert">
+        @lang('We will not warn you if email is not registered in the application.')
+    </p>
 
     @include('otp::fragments.status')
 
-    @if (session('status') === \Codewiser\Otp\Otp::SENT)
-        <form method="post"
-              action="{{ action([\Codewiser\Otp\Http\Controllers\AuthenticatedSessionController::class, 'verify']) }}">
-            @csrf
-            @method('put')
+    <form method="post" action="{{ action([AuthenticatedSessionController::class, 'store']) }}">
+        @csrf
 
-            <div>
-                <label for="email">@lang('Email')</label>
-                <input type="email" id="email" name="email" required readonly value="{{ old('email') }}">
+        <div>
+            <label for="email">@lang('Email')</label>
+            <input type="email" id="email" name="email" required autocomplete="email"
+                   @if(! old('email')) autofocus @endif
+                   value="{{ old('email') }}">
 
-                @error('email')
-                <div class="invalid">{{ $message }}</div>
-                @enderror
-            </div>
+            @error('email')
+            <div class="invalid">{{ $message }}</div>
+            @enderror
+        </div>
 
+        @if (old('email'))
             <div>
                 <label for="code">@lang('Code')</label>
-                <input type="text" id="code" name="code" required autofocus>
+                <input type="text" id="code" name="code" autofocus>
 
                 @error('code')
                 <div class="invalid">{{ $message }}</div>
@@ -36,38 +45,14 @@
                 <input type="checkbox" name="remember" id="remember">
                 <label for="remember">@lang('Remember me')</label>
             </div>
-
-            <button type="submit">@lang('Submit')</button>
-        </form>
-    @endif
-
-    <form method="post"
-          action="{{ action([\Codewiser\Otp\Http\Controllers\AuthenticatedSessionController::class, 'issue']) }}">
-        @csrf
-
-        <p class="alert">
-            @lang('We will not warn you if email is not registered in the application.')
-        </p>
+        @endif
 
         <div>
-            <label for="email">@lang('Email')</label>
-            <input type="email" id="email" name="email" required autofocus autocomplete="email"
-                   value="{{ old('email') }}">
-
-            @error('email')
-            <div class="invalid">{{ $message }}</div>
-            @enderror
-        </div>
-
-        @include('otp::fragments.countdown', ['availableIn' => $availableIn])
-
-        <button type="submit">
-            @if (session('status') === \Codewiser\Otp\Otp::SENT)
-                @lang('Send another one')
-            @else
-                @lang('Send code')
+            @if (old('email'))
+                <button type="submit">@lang('Submit')</button>
             @endif
-        </button>
+            <button type="submit" name="send">@lang('Send code')</button>
+        </div>
     </form>
 
 @endsection

@@ -4,6 +4,7 @@ namespace Codewiser\Otp\Http\Middleware;
 
 use Closure;
 use Codewiser\Otp\Contracts\MustVerifyEmailWithOtp;
+use Codewiser\Otp\Http\Controllers\EmailVerificationController;
 use Codewiser\Otp\Otp;
 use Codewiser\Otp\RateLimiter\OtpRateLimiter;
 use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
@@ -38,16 +39,23 @@ class EnsureOtpIsPassed extends EnsureEmailIsVerified
             $this->otp->notPassed($session)
         ) {
 
-            $redirect = redirect()->guest(route($redirectToRoute ?: 'otp.email.show'));
-
-            if (OtpRateLimiter::for(OtpRateLimiter::ISSUE, $request)->availableIn() === 0) {
-                $status = $this->otp->sendNewCode($session, $user);
-                $redirect->with([
-                    'status' => $status
-                ]);
+            if ($redirectToRoute) {
+                $redirect = redirect()->guest(route($redirectToRoute));
+            } else {
+                $redirect = redirect()->guest(action([EmailVerificationController::class, 'show']));
             }
 
-            return $redirect;
+            $limiter = OtpRateLimiter::for(OtpRateLimiter::ISSUE, $request);
+
+            if ($limiter->tooManyAttempts()) {
+                return $redirect;
+            }
+
+            $limiter->increment();
+
+            return $redirect->with([
+                'status' => $this->otp->sendNewCode($session, $user)
+            ]);
         }
 
         return $next($request);

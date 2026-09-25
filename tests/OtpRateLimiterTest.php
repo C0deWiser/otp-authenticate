@@ -5,6 +5,7 @@ namespace Codewiser\Otp\Tests;
 use Carbon\Carbon;
 use Codewiser\Otp\RateLimiter\OtpRateLimiter;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Support\Responsable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 
@@ -32,6 +33,17 @@ class OtpRateLimiterTest extends TestCase
         $this->assertSame(md5('otp-issue'.'test-user'), $limits[0]['key']);
         $this->assertSame(2, $limits[0]['maxAttempts']);
         $this->assertSame(60, $limits[0]['decaySeconds']);
+    }
+
+    public function test_is_responsable_and_returns_json_429_response()
+    {
+        $limiter = $this->limiter();
+        $request = Request::create('/otp/email', 'GET', [], [], [], [
+            'HTTP_ACCEPT' => 'application/json',
+        ]);
+
+        $this->assertInstanceOf(Responsable::class, $limiter);
+        $this->assertSame(429, $limiter->toResponse($request)->getStatusCode());
     }
 
     public function test_available_in_is_zero_before_hit()
@@ -83,6 +95,81 @@ class OtpRateLimiterTest extends TestCase
         } finally {
             Carbon::setTestNow();
         }
+    }
+
+    public function test_attempt_runs_callback_and_hits_limits()
+    {
+        $limiter = $this->limiter();
+
+        $this->assertTrue($limiter->attempt(fn () => null));
+        $this->assertSame(1, $limiter->attempts());
+        $this->assertSame(2, $limiter->increment());
+        $this->assertSame(2, $limiter->attempts());
+        $this->assertTrue($limiter->tooManyAttempts());
+
+        $called = false;
+        $this->assertFalse($limiter->attempt(function () use (&$called) {
+            $called = true;
+        }));
+        $this->assertFalse($called);
+    }
+
+    public function test_increment_and_decrement_apply_to_all_limits()
+    {
+        RateLimiter::for(OtpRateLimiter::ISSUE, fn (Request $request) => [
+            Limit::perMinute(2)->by('minute'),
+            Limit::perDay(3)->by('day'),
+        ]);
+
+        $limiter = $this->limiter();
+
+        $this->assertSame(2, $limiter->increment(2));
+        $this->assertSame(2, $limiter->attempts());
+        $this->assertSame(0, $limiter->remaining());
+        $this->assertSame(1, $limiter->decrement());
+        $this->assertSame(1, $limiter->attempts());
+    }
+
+    public function test_attempts_and_retries_use_all_limits()
+    {
+        RateLimiter::for(OtpRateLimiter::ISSUE, fn (Request $request) => [
+            Limit::perMinute(1)->by('minute'),
+            Limit::perDay(3)->by('day'),
+        ]);
+
+        $limiter = $this->limiter();
+        RateLimiter::hit(md5(OtpRateLimiter::ISSUE.'day'));
+
+        $this->assertSame(1, $limiter->attempts());
+        $this->assertSame(1, $limiter->remaining());
+        $this->assertSame(1, $limiter->retriesLeft());
+        $this->assertFalse($limiter->tooManyAttempts());
+
+        $limiter->hit();
+
+        $this->assertTrue($limiter->tooManyAttempts());
+    }
+
+    public function test_reset_attempts_and_clear_update_all_limits()
+    {
+        RateLimiter::for(OtpRateLimiter::ISSUE, fn (Request $request) => [
+            Limit::perMinute(2)->by('minute'),
+            Limit::perDay(3)->by('day'),
+        ]);
+
+        $limiter = $this->limiter();
+        $limiter->hit();
+
+        $this->assertTrue($limiter->resetAttempts());
+        $this->assertSame(0, $limiter->attempts());
+        $this->assertSame(0, $limiter->availableIn());
+        $this->assertGreaterThan(0, RateLimiter::availableIn(md5(OtpRateLimiter::ISSUE.'minute')));
+
+        $limiter->hit();
+        $limiter->clear();
+
+        $this->assertSame(0, $limiter->attempts());
+        $this->assertSame(0, $limiter->availableIn());
     }
 
     public function test_for_humans_returns_interval_label()

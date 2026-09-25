@@ -31,7 +31,7 @@ class RevalidateControllerTest extends TestCase
         $this->actingAs(new User)
             ->get('/otp/email')
             ->assertOk()
-            ->assertSee('One time password');
+            ->assertSee('Email Verification');
     }
 
     public function test_notice_route_redirects_when_otp_was_passed()
@@ -54,7 +54,7 @@ class RevalidateControllerTest extends TestCase
         $user = new User;
 
         $this->actingAs($user)
-            ->post('/otp/email')
+            ->post('/otp/email', ['send' => ''])
             ->assertRedirect();
 
         $this->assertSame(Otp::SENT, session('status'));
@@ -67,7 +67,7 @@ class RevalidateControllerTest extends TestCase
         $user = new User;
 
         $this->actingAs($user)
-            ->postJson('/otp/email')
+            ->postJson('/otp/email', ['send' => ''])
             ->assertOk()
             ->assertJson(['message' => Otp::SENT]);
 
@@ -79,11 +79,11 @@ class RevalidateControllerTest extends TestCase
         $user = new User;
 
         $this->actingAs($user);
-        $this->post('/otp/email');
+        $this->post('/otp/email', ['send' => '']);
 
         $code = $user->sentOtps[0];
 
-        $this->put('/otp/email', ['code' => $code])
+        $this->post('/otp/email', ['code' => $code])
             ->assertRedirect();
 
         $this->assertTrue(session()->get('otp_passed'));
@@ -95,12 +95,12 @@ class RevalidateControllerTest extends TestCase
         $user = new User;
 
         $this->actingAs($user);
-        $this->post('/otp/email');
+        $this->post('/otp/email', ['send' => '']);
 
         $code = $user->sentOtps[0];
 
         $this->actingAs($user)
-            ->putJson('/otp/email', ['code' => $code])
+            ->postJson('/otp/email', ['code' => $code])
             ->assertOk();
 
         $this->assertTrue(session()->get('otp_passed'));
@@ -126,7 +126,7 @@ class RevalidateControllerTest extends TestCase
         $user = new User;
 
         $this->actingAs($user)
-            ->put('/otp/email', ['code' => '123456'])
+            ->post('/otp/email', ['code' => '123456'])
             ->assertSessionHasErrors('code');
 
         $this->assertCount(1, $user->sentOtps);

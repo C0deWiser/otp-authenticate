@@ -6,15 +6,17 @@ use Closure;
 use Codewiser\Otp\Otp;
 use Exception;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Support\Responsable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\RateLimiter;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Helper class, that handles Laravel RateLimiter.
  */
-class OtpRateLimiter
+class OtpRateLimiter implements Responsable
 {
     const string ISSUE = 'otp-issue';
     const string VERIFY = 'otp-verify';
@@ -65,6 +67,163 @@ class OtpRateLimiter
     }
 
     /**
+     * Increment (by 1) the counter.
+     */
+    public function hit(): void
+    {
+        foreach ($this->limits() as $limit) {
+            RateLimiter::hit($limit['key'], $limit['decaySeconds']);
+        }
+    }
+
+    /**
+     * Attempts to execute a callback if it's not limited.
+     */
+    public function attempt(callable $callback)
+    {
+        $limits = $this->limits();
+
+        foreach ($limits as $limit) {
+            if (RateLimiter::tooManyAttempts($limit['key'], $limit['maxAttempts'])) {
+                return false;
+            }
+        }
+
+        $result = call_user_func($callback, $this->request);
+
+        if (is_null($result)) {
+            $result = true;
+        }
+
+        foreach ($limits as $limit) {
+            RateLimiter::hit($limit['key'], $limit['decaySeconds']);
+        }
+
+        return $result;
+    }
+
+    /**
+     * Determine if there are too many times.
+     */
+    public function tooManyAttempts(): bool
+    {
+        foreach ($this->limits() as $limit) {
+            if (RateLimiter::tooManyAttempts($limit['key'], $limit['maxAttempts'])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Increment the counter by a given amount.
+     */
+    public function increment(int $amount = 1): int
+    {
+        $attempts = [];
+
+        foreach ($this->limits() as $limit) {
+            $attempts[] = RateLimiter::increment(
+                $limit['key'],
+                $limit['decaySeconds'],
+                $amount
+            );
+        }
+
+        return $attempts ? max($attempts) : 0;
+    }
+
+    /**
+     * Decrement the counter by a given amount.
+     */
+    public function decrement(int $amount = 1): int
+    {
+        $attempts = [];
+
+        foreach ($this->limits() as $limit) {
+            $attempts[] = RateLimiter::decrement(
+                $limit['key'],
+                $limit['decaySeconds'],
+                $amount
+            );
+        }
+
+        return $attempts ? max($attempts) : 0;
+    }
+
+    /**
+     * Get the number of attempts.
+     */
+    public function attempts()
+    {
+        $attempts = [];
+
+        foreach ($this->limits() as $limit) {
+            $attempts[] = (int) RateLimiter::attempts($limit['key']);
+        }
+
+        return $attempts ? max($attempts) : 0;
+    }
+
+    /**
+     * Reset the number of attempts.
+     */
+    public function resetAttempts(): bool
+    {
+        $limits = $this->limits();
+
+        if (! $limits) {
+            return false;
+        }
+
+        $reset = true;
+
+        foreach ($limits as $limit) {
+            if (! RateLimiter::resetAttempts($limit['key'])) {
+                $reset = false;
+            }
+        }
+
+        return $reset;
+    }
+
+    /**
+     * Get the number of retries left.
+     */
+    public function remaining(): int
+    {
+        $remaining = [];
+
+        foreach ($this->limits() as $limit) {
+            $remaining[] = RateLimiter::remaining(
+                $limit['key'],
+                $limit['maxAttempts']
+            );
+        }
+
+        return $remaining ? min($remaining) : 0;
+    }
+
+    /**
+     * Get the number of retries left.
+     */
+    public function retriesLeft(): int
+    {
+        return $this->remaining();
+    }
+
+    /**
+     * Clear the hits and lockout timer.
+     */
+    public function clear(): void
+    {
+        foreach ($this->limits() as $limit) {
+            RateLimiter::clear($limit['key']);
+        }
+    }
+
+    /**
      * Get number of seconds until next try.
      */
     public function availableIn(): int
@@ -102,6 +261,14 @@ class OtpRateLimiter
         } catch (Exception) {
             return (string) $availableIn;
         }
+    }
+
+    /**
+     * Returns Throttled response.
+     */
+    public function toResponse($request): Response
+    {
+        return ($this->response())($request, []);
     }
 
     /**

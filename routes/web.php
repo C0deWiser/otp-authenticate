@@ -11,22 +11,16 @@ Route::middleware('web')
     ->group(function () {
 
         Route::middleware('auth')
-            ->prefix('email')->as('email.')
+            ->prefix('email')
             ->group(function () {
-                Route::get('/', [EmailVerificationController::class, 'show'])->name('show');
-                Route::post('/', [EmailVerificationController::class, 'issue'])->name('issue')
-                    ->middleware(ThrottleRequests::using(OtpRateLimiter::ISSUE));
-                Route::put('/', [EmailVerificationController::class, 'verify'])->name('verify')
-                    ->middleware(ThrottleRequests::using(OtpRateLimiter::VERIFY));
+                Route::get('/', [EmailVerificationController::class, 'show'])->name('email');
+                Route::post('/', [EmailVerificationController::class, 'store'])->name('email.store');
             });
 
         Route::middleware('guest')
-            ->prefix('login')->as('login.')
+            ->prefix('login')
             ->group(function () {
-                Route::get('/', [AuthenticatedSessionController::class, 'show'])->name('show');
-                Route::post('/', [AuthenticatedSessionController::class, 'issue'])->name('issue')
-                    ->middleware(ThrottleRequests::using(OtpRateLimiter::ISSUE));
-                Route::put('/', [AuthenticatedSessionController::class, 'verify'])->name('verify')
-                    ->middleware(ThrottleRequests::using(OtpRateLimiter::VERIFY));
+                Route::get('/', [AuthenticatedSessionController::class, 'show'])->name('login');
+                Route::post('/', [AuthenticatedSessionController::class, 'store'])->name('login.store');
             });
     });

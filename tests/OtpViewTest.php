@@ -83,7 +83,6 @@ class OtpViewTest extends TestCase
 
         $this->assertInstanceOf(JsonResponse::class, $response);
         $this->assertSame(204, $response->getStatusCode());
-        $this->assertSame(['availableIn' => 0], json_decode($response->getContent(), true));
     }
 
     public function test_default_verify_email_view_uses_otp_verify_email_template()

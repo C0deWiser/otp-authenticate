@@ -87,7 +87,7 @@
         }
 
         var form = countdown.closest('form');
-        var button = form && form.querySelector('button[type="submit"]');
+        var button = form && form.querySelector('button[name="send"]');
         var template = countdown.getAttribute('data-otp-countdown-template');
         var seconds = parseInt(countdown.getAttribute('data-otp-countdown-seconds'), 10);
 
