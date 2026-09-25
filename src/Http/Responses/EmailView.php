@@ -3,16 +3,17 @@
 namespace Codewiser\Otp\Http\Responses;
 
 use Codewiser\Otp\Contracts\VerifyEmailViewResponse;
-use Codewiser\Otp\OtpVerify;
+use Codewiser\Otp\Otp;
+use Illuminate\Http\JsonResponse;
 
 class EmailView extends LoginView implements VerifyEmailViewResponse
 {
     public function toResponse($request): mixed
     {
-        if (! $request->wantsJson()) {
-            if (app(OtpVerify::class)->passed($request->session())) {
-                return redirect()->intended('/');
-            }
+        if (app(Otp::class)->passed($request->session())) {
+            return $request->wantsJson()
+                ? new JsonResponse('', 200)
+                : redirect()->intended('/');
         }
 
         return parent::toResponse($request);

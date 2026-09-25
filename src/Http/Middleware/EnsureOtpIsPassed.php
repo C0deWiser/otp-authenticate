@@ -4,13 +4,12 @@ namespace Codewiser\Otp\Http\Middleware;
 
 use Closure;
 use Codewiser\Otp\Contracts\MustVerifyEmailWithOtp;
-use Codewiser\Otp\Http\Controllers\EmailVerificationController;
-use Codewiser\Otp\OtpVerify;
+use Codewiser\Otp\Otp;
 use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
 
 class EnsureOtpIsPassed extends EnsureEmailIsVerified
 {
-    public function __construct(public OtpVerify $otp)
+    public function __construct(public Otp $otp)
     {
         //
     }
@@ -30,19 +29,19 @@ class EnsureOtpIsPassed extends EnsureEmailIsVerified
             return parent::handle($request, $next, $redirectToRoute);
         }
 
-        if (! $request->user() || (
-                $request->user() instanceof MustVerifyEmailWithOtp &&
-                $this->otp->needToVerifyEmail($request->user()) &&
-                $this->otp->notPassed($request->session())
+        $user = $request->user();
+        $session = $request->session();
+
+        if (! $user || (
+                $user instanceof MustVerifyEmailWithOtp &&
+                $user->shouldVerifyEmail() &&
+                $this->otp->notPassed($session)
             )) {
 
             return redirect()
                 ->guest(route($redirectToRoute ?: 'otp.email.show'))
                 ->with([
-                    'status' => $this->otp->sendNewCode(
-                        $request->session(),
-                        $request->user()
-                    )
+                    'status' => $this->otp->sendNewCode($session, $user)
                 ]);
         }
 

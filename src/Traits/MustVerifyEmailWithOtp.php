@@ -10,9 +10,9 @@ trait MustVerifyEmailWithOtp
 {
     use MustVerifyEmail;
 
-    public function getEmailVerifiedAt(): ?DateTimeInterface
+    public function shouldVerifyEmail(): bool
     {
-        return $this->email_verified_at;
+        return ! $this->hasVerifiedEmail();
     }
 
     public function sendOtpNotification(string $code): void

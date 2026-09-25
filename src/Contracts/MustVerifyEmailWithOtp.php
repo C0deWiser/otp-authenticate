@@ -8,9 +8,9 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 interface MustVerifyEmailWithOtp extends MustVerifyEmail
 {
     /**
-     * Get the datetime of email verification.
+     * Determine if the user should re-verify their email address.
      */
-    public function getEmailVerifiedAt(): ?DateTimeInterface;
+    public function shouldVerifyEmail(): bool;
 
     /**
      * Send the otp verification notification.

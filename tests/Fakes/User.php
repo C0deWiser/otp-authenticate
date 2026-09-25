@@ -65,6 +65,11 @@ class User implements Authenticatable, MustVerifyEmailWithOtp
         return $this->emailVerified;
     }
 
+    public function shouldVerifyEmail(): bool
+    {
+        return ! $this->emailVerified;
+    }
+
     public function markEmailAsVerified(): bool
     {
         $this->emailVerified = true;

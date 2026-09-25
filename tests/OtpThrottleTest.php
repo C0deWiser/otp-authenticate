@@ -3,7 +3,6 @@
 namespace Codewiser\Otp\Tests;
 
 use Codewiser\Otp\Otp;
-use Codewiser\Otp\OtpVerify;
 use Codewiser\Otp\RateLimiter\OtpRateLimiter;
 use Codewiser\Otp\Tests\Fakes\User;
 use Illuminate\Cache\RateLimiter;
@@ -16,7 +15,7 @@ class OtpThrottleTest extends TestCase
     {
         parent::getEnvironmentSetUp($app);
 
-        $app->instance(OtpVerify::class, new OtpVerify(new \DateInterval('P1W')));
+        $app->instance(Otp::class, new Otp);
 
         $app->make(RateLimiter::class)->for(OtpRateLimiter::ISSUE, fn (Request $request) => [
             Limit::perMinute(1)->by('user:'.$request->user()?->getAuthIdentifier()),
@@ -51,7 +50,7 @@ class OtpThrottleTest extends TestCase
         $response = $this->post('/otp/email');
 
         $response->assertStatus(302);
-        $response->assertSessionHas('status', Otp::OTP_THROTTLE);
+        $response->assertSessionHas('status', Otp::THROTTLE);
         $response->assertSessionHas('delay');
         $this->assertCount(1, $user->sentOtps);
     }

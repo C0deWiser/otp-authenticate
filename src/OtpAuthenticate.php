@@ -18,7 +18,7 @@ class OtpAuthenticate extends Otp
         //
     }
 
-    public function resolveUser($user): ?Authenticatable
+    protected function resolveUser($user): ?Authenticatable
     {
         if (is_string($user) && $user !== '') {
             $user = $this->provider->retrieveByCredentials([
@@ -48,7 +48,7 @@ class OtpAuthenticate extends Otp
         }
 
         // Prevent enumerating emails
-        return self::OTP_SENT;
+        return self::SENT;
     }
 
     /**
@@ -68,7 +68,7 @@ class OtpAuthenticate extends Otp
             $this->logger?->warning("Otp verified, but user not found");
 
             throw ValidationException::withMessages([
-                'email' => __('auth.failed')
+                'email' => trans('auth.failed')
             ]);
         }
 

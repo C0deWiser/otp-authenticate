@@ -4,7 +4,6 @@ namespace Codewiser\Otp\Tests;
 
 use Codewiser\Otp\Http\Middleware\EnsureOtpIsPassed;
 use Codewiser\Otp\Otp;
-use Codewiser\Otp\OtpVerify;
 use Codewiser\Otp\Tests\Fakes\PlainUser;
 use Codewiser\Otp\Tests\Fakes\User;
 use Illuminate\Support\Carbon;
@@ -16,7 +15,7 @@ class EnsureOtpIsPassedTest extends TestCase
     {
         parent::setUp();
 
-        $this->app->instance(OtpVerify::class, new OtpVerify(new \DateInterval('P1W')));
+        $this->app->instance(Otp::class, new Otp);
 
         Route::middleware(['web', EnsureOtpIsPassed::class])
             ->get('/otp-protected', fn () => 'protected content');
@@ -31,7 +30,7 @@ class EnsureOtpIsPassedTest extends TestCase
             ->get('/otp-protected')
             ->assertRedirect('/otp/email');
 
-        $this->assertSame(Otp::OTP_SENT, session('status'));
+        $this->assertSame(Otp::SENT, session('status'));
         $this->assertCount(1, $user->sentOtps);
         $this->assertMatchesRegularExpression('/^\d{6}$/', $user->sentOtps[0]);
     }
@@ -48,9 +47,10 @@ class EnsureOtpIsPassedTest extends TestCase
             ->assertSee('protected content');
     }
 
-    public function test_lets_user_in_when_email_was_verified_recently()
+    public function test_lets_user_in_when_email_verification_is_still_valid()
     {
         $user = new User;
+        $user->emailVerified = true;
         $user->emailVerifiedAt = Carbon::now();
 
         $this->actingAs($user)

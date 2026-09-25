@@ -6,12 +6,12 @@ use Codewiser\Otp\Contracts\CodeVerifiedResponse;
 use Codewiser\Otp\Contracts\SendRequestResponse;
 use Codewiser\Otp\Contracts\VerifyEmailViewResponse;
 use Codewiser\Otp\Http\Requests\VerifyRequest;
-use Codewiser\Otp\OtpVerify;
+use Codewiser\Otp\Otp;
 use Illuminate\Http\Request;
 
 class EmailVerificationController
 {
-    public function __construct(public OtpVerify $otp)
+    public function __construct(public Otp $otp)
     {
         //
     }

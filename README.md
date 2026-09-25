@@ -129,35 +129,47 @@ the validation errors will be returned with the 422 HTTP response.
 You may wish for users to **periodically re-verify** their email address before 
 they continue accessing your application.
 
-### Verification Frequency
+### Verification Strategy
 
-Configure the frequency of email verification in a service provider class.
-Register `Codewiser\Otp\OtpVerify` in your application's 
-`App\Providers\OtpServiceProvider` class.
+You may configure a strategy of email verification for every user personally.
+`MustVerifyEmailWithOtp` interface has `shouldVerifyEmail` method, and you 
+may implement it respecting user properties, e.g. user roles, etc. 
 
 ```php
-use Codewiser\Otp\OtpVerify;
+use Codewiser\Otp\Contracts\MustVerifyEmailWithOtp;
+use Codewiser\Otp\Traits\MustVerifyEmailWithOtp as HasOtp;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 
-/**
- * Register any application services.
- */
-public function register(): void
+class User extends Authenticatable implements MustVerifyEmailWithOtp 
 {
-    $this->app->singleton(OtpVerify::class,
-        fn($app) => new OtpVerify(
-            new \DateInterval('P1W')
-        )
-    );
+    use HasOtp;
+    
+    public function shouldVerifyEmail() : bool
+    {
+        if (! $this->hasVerifiedEmail()) {
+            return true;
+        }
+    
+        if ($this->roles->contains('admin')) {
+            // Admin should reverify their email every time.
+            return true;
+        }
+    
+        if ($this->roles->contains('manager')) {
+            // Manager should reverify their email every month.
+            return now()
+                ->diffAsCarbonInterval($this->email_verified_at)
+                ->greaterThan(
+                    new \DateInterval('P1M')
+                );
+        }
+        
+        return false;
+    }
 }
 ```
 
-For example, if we pass date interval `P1M`, users should revalidate an 
-email at least once a month.
-
-Passing `null` means that every authentication process is accompanied by an otp.
-
-> Either way, the otp process will be invoked no more often than once
-> during user session.
+The otp process will be invoked no more often than once during user session.
 
 ### Customizing View
 

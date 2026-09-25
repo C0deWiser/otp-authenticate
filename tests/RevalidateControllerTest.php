@@ -3,7 +3,6 @@
 namespace Codewiser\Otp\Tests;
 
 use Codewiser\Otp\Otp;
-use Codewiser\Otp\OtpVerify;
 use Codewiser\Otp\RateLimiter\OtpRateLimiter;
 use Codewiser\Otp\Tests\Fakes\User;
 use Illuminate\Cache\RateLimiter;
@@ -16,7 +15,7 @@ class RevalidateControllerTest extends TestCase
     {
         parent::getEnvironmentSetUp($app);
 
-        $app->instance(OtpVerify::class, new OtpVerify(new \DateInterval('P1W')));
+        $app->instance(Otp::class, new Otp);
 
         $app->make(RateLimiter::class)->for(OtpRateLimiter::ISSUE, fn (Request $request) => [
             Limit::perMinute(30)->by($request->user()?->getAuthIdentifier() ?: 'guest'),
@@ -58,7 +57,7 @@ class RevalidateControllerTest extends TestCase
             ->post('/otp/email')
             ->assertRedirect();
 
-        $this->assertSame(Otp::OTP_SENT, session('status'));
+        $this->assertSame(Otp::SENT, session('status'));
         $this->assertCount(1, $user->sentOtps);
         $this->assertMatchesRegularExpression('/^\d{6}$/', $user->sentOtps[0]);
     }
@@ -70,7 +69,7 @@ class RevalidateControllerTest extends TestCase
         $this->actingAs($user)
             ->postJson('/otp/email')
             ->assertOk()
-            ->assertJson(['message' => Otp::OTP_SENT]);
+            ->assertJson(['message' => Otp::SENT]);
 
         $this->assertCount(1, $user->sentOtps);
     }

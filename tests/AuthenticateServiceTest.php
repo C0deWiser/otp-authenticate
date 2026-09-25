@@ -26,7 +26,7 @@ class AuthenticateServiceTest extends TestCase
 
         $result = $service->sendNewCode($session, $user);
 
-        $this->assertSame(Otp::OTP_SENT, $result);
+        $this->assertSame(Otp::SENT, $result);
         $this->assertCount(1, $user->sentOtps);
         $this->assertMatchesRegularExpression('/^\d{6}$/', $user->sentOtps[0]);
     }
@@ -38,7 +38,7 @@ class AuthenticateServiceTest extends TestCase
 
         $result = $service->sendNewCode($session, new \stdClass);
 
-        $this->assertSame(Otp::OTP_SENT, $result);
+        $this->assertSame(Otp::SENT, $result);
         $this->assertSame([], $session->all());
     }
 
@@ -49,7 +49,7 @@ class AuthenticateServiceTest extends TestCase
 
         $result = $service->sendNewCode($session, new PlainUser(1));
 
-        $this->assertSame(Otp::OTP_SENT, $result);
+        $this->assertSame(Otp::SENT, $result);
         $this->assertSame([], $session->all());
     }
 
@@ -62,7 +62,7 @@ class AuthenticateServiceTest extends TestCase
 
         $result = $service->sendNewCode($session, $user->id);
 
-        $this->assertSame(Otp::OTP_SENT, $result);
+        $this->assertSame(Otp::SENT, $result);
         $this->assertSame([], $session->all());
     }
 
@@ -91,7 +91,7 @@ class AuthenticateServiceTest extends TestCase
             $this->fail('ValidationException was not thrown.');
         } catch (ValidationException $e) {
             $this->assertArrayHasKey('code', $e->errors());
-            $this->assertSame(Otp::OTP_LOST, $e->errors()['code'][0]);
+            $this->assertSame(Otp::LOST, $e->errors()['code'][0]);
         }
 
         $this->assertCount(1, $user->sentOtps);
@@ -113,7 +113,7 @@ class AuthenticateServiceTest extends TestCase
             $this->fail('ValidationException was not thrown.');
         } catch (ValidationException $e) {
             $this->assertArrayHasKey('code', $e->errors());
-            $this->assertSame(Otp::OTP_MISMATCH, $e->errors()['code'][0]);
+            $this->assertSame(Otp::MISMATCH, $e->errors()['code'][0]);
         }
 
         $this->assertCount(1, $user->sentOtps);
@@ -137,7 +137,7 @@ class AuthenticateServiceTest extends TestCase
             $service->validate($session, $user, '1e5');
             $this->fail('ValidationException was not thrown.');
         } catch (ValidationException $e) {
-            $this->assertSame(Otp::OTP_MISMATCH, $e->errors()['code'][0]);
+            $this->assertSame(Otp::MISMATCH, $e->errors()['code'][0]);
         }
     }
 
@@ -179,7 +179,7 @@ class AuthenticateServiceTest extends TestCase
 
         $result = $service->sendNewCode($session, $user->email);
 
-        $this->assertSame(Otp::OTP_SENT, $result);
+        $this->assertSame(Otp::SENT, $result);
         $this->assertCount(1, $user->sentOtps);
         $this->assertMatchesRegularExpression('/^\d{6}$/', $user->sentOtps[0]);
     }
@@ -191,7 +191,7 @@ class AuthenticateServiceTest extends TestCase
 
         $result = $service->sendNewCode($session, 'ghost@example.com');
 
-        $this->assertSame(Otp::OTP_SENT, $result);
+        $this->assertSame(Otp::SENT, $result);
         $this->assertSame([], $session->all());
     }
 
@@ -229,7 +229,7 @@ class AuthenticateServiceTest extends TestCase
             $this->fail('ValidationException was not thrown.');
         } catch (ValidationException $e) {
             $this->assertArrayHasKey('code', $e->errors());
-            $this->assertSame(Otp::OTP_LOST, $e->errors()['code'][0]);
+            $this->assertSame(Otp::LOST, $e->errors()['code'][0]);
         }
 
         $this->assertFalse($session->get('otp_passed', false));
@@ -286,29 +286,6 @@ class AuthenticateServiceTest extends TestCase
         }
 
         $this->assertFalse($session->get('otp_passed', false));
-    }
-
-    public function test_resolve_user_uses_provider()
-    {
-        $user = new User;
-
-        $service = $this->service([$user->email => $user]);
-
-        $this->assertSame($user, $service->resolveUser($user->email));
-        $this->assertNull($service->resolveUser('missing@example.com'));
-        $this->assertNull($service->resolveUser(''));
-    }
-
-    public function test_resolve_user_uses_fortify_username()
-    {
-        $user = new User;
-
-        config(['fortify.email' => 'username']);
-
-        $service = $this->service([$user->username => $user], 'username');
-
-        $this->assertSame($user, $service->resolveUser($user->username));
-        $this->assertNull($service->resolveUser('ghost'));
     }
 
     public function test_authenticate_logs_the_user_in_and_marks_as_passed()

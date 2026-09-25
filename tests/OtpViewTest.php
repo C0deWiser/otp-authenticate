@@ -5,7 +5,6 @@ namespace Codewiser\Otp\Tests;
 use Codewiser\Otp\Contracts\LoginViewResponse;
 use Codewiser\Otp\Contracts\VerifyEmailViewResponse;
 use Codewiser\Otp\Otp;
-use Codewiser\Otp\OtpVerify;
 use Codewiser\Otp\RateLimiter\OtpRateLimiter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,7 +17,7 @@ class OtpViewTest extends TestCase
     {
         parent::setUp();
 
-        $this->app->instance(OtpVerify::class, new OtpVerify(new \DateInterval('P1W')));
+        $this->app->instance(Otp::class, new Otp);
 
         RateLimiter::for(OtpRateLimiter::ISSUE, fn (Request $request) => [
             \Illuminate\Cache\RateLimiting\Limit::perMinute(10)->by('test'),

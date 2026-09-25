@@ -106,10 +106,10 @@ class OtpRateLimiter
     public function response(): Closure
     {
         return fn(Request $request, array $headers) => $request->expectsJson()
-            ? new JsonResponse(['message' => trans(Otp::OTP_THROTTLE)], 429, $headers)
+            ? new JsonResponse(['message' => trans(Otp::THROTTLE)], 429, $headers)
             : redirect()
                 ->back(302, $headers)
-                ->with('status', trans(Otp::OTP_THROTTLE))
+                ->with('status', trans(Otp::THROTTLE))
                 ->with('delay', $this->forHumans());
     }
 }

@@ -14,23 +14,21 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Psr\Log\LoggerAwareTrait;
 
-abstract class Otp
+class Otp
 {
     use LoggerAwareTrait;
 
-    const string OTP_SENT = 'otp-sent';
-    const string OTP_LOST = 'otp-lost';
-    const string OTP_MISMATCH = 'otp-mismatch';
-    const string OTP_THROTTLE = 'otp-throttle';
+    const string SENT = 'otp-sent';
+    const string LOST = 'otp-lost';
+    const string MISMATCH = 'otp-mismatch';
+    const string THROTTLE = 'otp-throttle';
 
     /**
      * Specify which view should be used as the login view.
      */
     public static function loginView(callable|string $view): void
     {
-        app()->singleton(LoginViewResponse::class, function () use ($view) {
-            return new LoginView($view);
-        });
+        app()->singleton(LoginViewResponse::class, fn() => new LoginView($view));
     }
 
     /**
@@ -38,13 +36,11 @@ abstract class Otp
      */
     public static function verifyEmailView(callable|string $view): void
     {
-        app()->singleton(VerifyEmailViewResponse::class, function () use ($view) {
-            return new EmailView($view);
-        });
+        app()->singleton(VerifyEmailViewResponse::class, fn() => new EmailView($view));
     }
 
     /**
-     * @var null|callable: string
+     * @var null|callable(): string
      */
     protected static $newCodeCallback = null;
 
@@ -82,8 +78,6 @@ abstract class Otp
         }
     }
 
-    abstract public function resolveUser($user): ?Authenticatable;
-
     /**
      * Send a new otp to the user.
      *
@@ -98,7 +92,7 @@ abstract class Otp
             throw new \RuntimeException('User must implement MustVerifyEmailWithOtp interface');
         }
 
-        return self::OTP_SENT;
+        return self::SENT;
     }
 
     /**
@@ -120,7 +114,7 @@ abstract class Otp
             $this->sendNewCode($session, $user);
 
             throw ValidationException::withMessages([
-                'code' => trans(self::OTP_LOST)
+                'code' => trans(self::LOST)
             ]);
         }
 
@@ -129,7 +123,7 @@ abstract class Otp
             $this->logger?->warning("Otp mismatch");
 
             throw ValidationException::withMessages([
-                'code' => trans(self::OTP_MISMATCH)
+                'code' => trans(self::MISMATCH)
             ]);
         }
 

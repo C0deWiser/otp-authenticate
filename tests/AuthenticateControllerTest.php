@@ -68,7 +68,7 @@ class AuthenticateControllerTest extends TestCase
         $this->post('/otp/login', ['email' => 'user@example.com'])
             ->assertRedirect();
 
-        $this->assertSame(Otp::OTP_SENT, session('status'));
+        $this->assertSame(Otp::SENT, session('status'));
         $this->assertCount(1, $this->user->sentOtps);
         $this->assertMatchesRegularExpression('/^\d{6}$/', $this->user->sentOtps[0]);
     }
@@ -77,7 +77,7 @@ class AuthenticateControllerTest extends TestCase
     {
         $this->postJson('/otp/login', ['email' => $this->user->email])
             ->assertOk()
-            ->assertJson(['message' => Otp::OTP_SENT]);
+            ->assertJson(['message' => Otp::SENT]);
 
         $this->assertCount(1, $this->user->sentOtps);
     }
@@ -86,7 +86,7 @@ class AuthenticateControllerTest extends TestCase
     {
         $this->post('/otp/login', ['email' => 'ghost@example.com'])
             ->assertRedirect()
-            ->assertSessionHas('status', Otp::OTP_SENT);
+            ->assertSessionHas('status', Otp::SENT);
     }
 
     public function test_verify_logs_the_guest_in()

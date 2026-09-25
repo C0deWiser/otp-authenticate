@@ -1,36 +1,38 @@
 {
-    "name": "codewiser/otp-authenticate",
-    "description": "One time passwords for Laravel",
-    "type": "library",
-    "license": "MIT",
-    "autoload": {
-        "psr-4": {
-            "Codewiser\\Otp\\": "src/"
-        }
-    },
+  "name": "codewiser/otp-authenticate",
+  "description": "One time passwords for Laravel",
+  "type": "library",
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "Codewiser\\Otp\\": "src/"
+    }
+  },
   "autoload-dev": {
     "psr-4": {
       "Codewiser\\Otp\\Tests\\": "tests/"
     },
-    "classmap": ["stubs/"]
+    "classmap": [
+      "stubs/"
+    ]
   },
-    "authors": [
-        {
-            "name": "pm",
-            "email": "pm@101media.ru"
-        }
-    ],
-    "minimum-stability": "stable",
-    "require": {
-      "php": "^8.3",
-        "laravel/fortify": "^1.40",
-        "laravel/framework": "^13.0"
-    },
-    "require-dev": {
-        "orchestra/testbench": "^11.3",
-        "phpunit/phpunit": "^12.0",
-        "mockery/mockery": "^1.6"
-    },
+  "authors": [
+    {
+      "name": "pm",
+      "email": "pm@101media.ru"
+    }
+  ],
+  "minimum-stability": "stable",
+  "require": {
+    "php": "^8.3",
+    "laravel/fortify": ">=1.0",
+    "laravel/framework": ">=13.0"
+  },
+  "require-dev": {
+    "orchestra/testbench": "^11.3",
+    "phpunit/phpunit": "^12.0",
+    "mockery/mockery": "^1.6"
+  },
   "extra": {
     "laravel": {
       "providers": [

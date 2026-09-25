@@ -4,9 +4,7 @@ namespace App\Providers;
 
 use Codewiser\Otp\Otp;
 use Codewiser\Otp\OtpAuthenticate;
-use Codewiser\Otp\OtpVerify;
 use Codewiser\Otp\RateLimiter\OtpRateLimiter;
-use DateInterval;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -26,12 +24,6 @@ class OtpServiceProvider extends ServiceProvider
                 Auth::createUserProvider('users'),
                 Auth::guard('web')
             ));
-
-        $this->app->singleton(OtpVerify::class,
-            fn($app) => new OtpVerify(
-                new DateInterval('P1Y')
-            )
-        );
     }
 
     /**

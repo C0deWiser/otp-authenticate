@@ -30,7 +30,7 @@
         @endif
 
         <button type="submit">
-            @if (session('status') === \Codewiser\Otp\Otp::OTP_SENT)
+            @if (session('status') === \Codewiser\Otp\Otp::SENT)
                 {{ __('Send another one') }}
             @else
                 {{ __('Send code') }}
