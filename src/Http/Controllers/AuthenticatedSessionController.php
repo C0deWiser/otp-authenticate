@@ -9,12 +9,9 @@ use Codewiser\Otp\Http\Requests\LoginRequest;
 use Codewiser\Otp\Http\Requests\SendRequest;
 use Codewiser\Otp\OtpAuthenticate;
 use Illuminate\Contracts\Auth\Authenticatable;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Fortify;
-
 
 class AuthenticatedSessionController
 {
@@ -26,7 +23,7 @@ class AuthenticatedSessionController
     /**
      * Show otp login view.
      */
-    public function notice(Request $request)
+    public function show(Request $request)
     {
         return app(LoginViewResponse::class);
     }
@@ -34,7 +31,7 @@ class AuthenticatedSessionController
     /**
      * Send a new code.
      */
-    public function issue(SendRequest $request): JsonResponse|RedirectResponse
+    public function issue(SendRequest $request)
     {
         $status = $this->otp->sendNewCode(
             $request->session(),
@@ -43,14 +40,14 @@ class AuthenticatedSessionController
 
         return app(SendRequestResponse::class, [
             'status'     => $status,
-            'redirectTo' => 'login-otp.confirm'
+            'redirectTo' => action([static::class, 'show'])
         ]);
     }
 
     /**
      * Verify code.
      */
-    public function verify(LoginRequest $request): JsonResponse|RedirectResponse
+    public function verify(LoginRequest $request)
     {
         $user = $this->otp->validate(
             $request->session(),

@@ -16,7 +16,7 @@ class RevalidateControllerTest extends TestCase
     {
         parent::getEnvironmentSetUp($app);
 
-        $app->instance(OtpVerify::class, new OtpVerify('P1W'));
+        $app->instance(OtpVerify::class, new OtpVerify(new \DateInterval('P1W')));
 
         $app->make(RateLimiter::class)->for(OtpRateLimiter::ISSUE, fn (Request $request) => [
             Limit::perMinute(30)->by($request->user()?->getAuthIdentifier() ?: 'guest'),
@@ -30,7 +30,7 @@ class RevalidateControllerTest extends TestCase
     public function test_notice_route_renders_the_form()
     {
         $this->actingAs(new User)
-            ->get('/email/otp')
+            ->get('/otp/email')
             ->assertOk()
             ->assertSee('One time password');
     }
@@ -39,14 +39,14 @@ class RevalidateControllerTest extends TestCase
     {
         $this->actingAs(new User)
             ->withSession(['otp_passed' => true])
-            ->get('/email/otp')
+            ->get('/otp/email')
             ->assertRedirect('/');
     }
 
     public function test_notice_route_returns_no_content_for_json()
     {
         $this->actingAs(new User)
-            ->getJson('/email/otp')
+            ->getJson('/otp/email')
             ->assertStatus(204);
     }
 
@@ -55,7 +55,7 @@ class RevalidateControllerTest extends TestCase
         $user = new User;
 
         $this->actingAs($user)
-            ->post('/email/otp')
+            ->post('/otp/email')
             ->assertRedirect();
 
         $this->assertSame(Otp::OTP_SENT, session('status'));
@@ -63,17 +63,46 @@ class RevalidateControllerTest extends TestCase
         $this->assertMatchesRegularExpression('/^\d{6}$/', $user->sentOtps[0]);
     }
 
+    public function test_issue_sends_a_code_as_json()
+    {
+        $user = new User;
+
+        $this->actingAs($user)
+            ->postJson('/otp/email')
+            ->assertOk()
+            ->assertJson(['message' => Otp::OTP_SENT]);
+
+        $this->assertCount(1, $user->sentOtps);
+    }
+
     public function test_verify_accepts_the_right_code()
     {
         $user = new User;
 
         $this->actingAs($user);
-        $this->post('/email/otp');
+        $this->post('/otp/email');
 
         $code = $user->sentOtps[0];
 
-        $this->put('/email/otp', ['otp' => $code])
-            ->assertRedirect('/');
+        $this->put('/otp/email', ['code' => $code])
+            ->assertRedirect();
+
+        $this->assertTrue(session()->get('otp_passed'));
+        $this->assertTrue($user->emailVerified);
+    }
+
+    public function test_verify_accepts_the_right_code_as_json()
+    {
+        $user = new User;
+
+        $this->actingAs($user);
+        $this->post('/otp/email');
+
+        $code = $user->sentOtps[0];
+
+        $this->actingAs($user)
+            ->putJson('/otp/email', ['code' => $code])
+            ->assertOk();
 
         $this->assertTrue(session()->get('otp_passed'));
         $this->assertTrue($user->emailVerified);
@@ -84,10 +113,10 @@ class RevalidateControllerTest extends TestCase
         $user = new User;
 
         $this->actingAs($user);
-        $this->post('/email/otp');
+        $this->post('/otp/email');
 
-        $this->put('/email/otp', ['otp' => '000000'])
-            ->assertSessionHasErrors('otp');
+        $this->put('/otp/email', ['code' => '000000'])
+            ->assertSessionHasErrors('code');
 
         $this->assertFalse(session()->get('otp_passed', false));
         $this->assertFalse($user->emailVerified);
@@ -98,8 +127,8 @@ class RevalidateControllerTest extends TestCase
         $user = new User;
 
         $this->actingAs($user)
-            ->put('/email/otp', ['otp' => '123456'])
-            ->assertSessionHasErrors('otp');
+            ->put('/otp/email', ['code' => '123456'])
+            ->assertSessionHasErrors('code');
 
         $this->assertCount(1, $user->sentOtps);
         $this->assertMatchesRegularExpression('/^\d{6}$/', $user->sentOtps[0]);

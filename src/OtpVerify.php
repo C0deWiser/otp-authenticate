@@ -4,24 +4,21 @@ namespace Codewiser\Otp;
 
 use Codewiser\Otp\Contracts\MustVerifyEmailWithOtp;
 use DateInterval;
-use Exception;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Carbon;
 
 class OtpVerify extends Otp
 {
     /**
-     * @param  null|string  $cooldown  re-verify email: null for every session; DateInterval after period.
+     * @param  null|DateInterval  $cooldown  re-verify email: null for every session; interval after period.
      */
-    public function __construct(public ?string $cooldown)
+    public function __construct(public ?DateInterval $cooldown)
     {
         //
     }
 
     /**
      * Check if the user email needs to be re-verified.
-     *
-     * @throws Exception when the duration cannot be parsed as an interval.
      */
     public function needToVerifyEmail($user): bool
     {
@@ -46,7 +43,7 @@ class OtpVerify extends Otp
             $verifiedAt = Carbon::make($verifiedAt);
             $this->logger?->debug("Email verified at $verifiedAt");
 
-            $validUntil = $verifiedAt->add(new DateInterval($this->cooldown));
+            $validUntil = $verifiedAt->add($this->cooldown);
             $this->logger?->debug("Email valid until $validUntil");
 
             if ($validUntil->isPast()) {

@@ -2,14 +2,16 @@
 
 namespace Codewiser\Otp\Tests;
 
+use Codewiser\Otp\Otp;
 use Codewiser\Otp\OtpVerify;
+use Codewiser\Otp\Tests\Fakes\PlainUser;
+use Codewiser\Otp\Tests\Fakes\Session;
 use Codewiser\Otp\Tests\Fakes\User;
-use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
 class RevalidateServiceTest extends TestCase
 {
-    private function service(?string $cooldown = null): OtpVerify
+    private function service(?\DateInterval $cooldown = null): OtpVerify
     {
         return new OtpVerify($cooldown);
     }
@@ -40,7 +42,7 @@ class RevalidateServiceTest extends TestCase
         $user = new User;
         $user->emailVerifiedAt = Carbon::now();
 
-        $this->assertFalse($this->service('P1W')->needToVerifyEmail($user));
+        $this->assertFalse($this->service(new \DateInterval('P1W'))->needToVerifyEmail($user));
     }
 
     public function test_needed_when_verification_is_outdated()
@@ -48,7 +50,7 @@ class RevalidateServiceTest extends TestCase
         $user = new User;
         $user->emailVerifiedAt = Carbon::now()->subWeeks(2);
 
-        $this->assertTrue($this->service('P1W')->needToVerifyEmail($user));
+        $this->assertTrue($this->service(new \DateInterval('P1W'))->needToVerifyEmail($user));
     }
 
     public function test_verification_timestamp_object_is_not_mutated()
@@ -56,24 +58,35 @@ class RevalidateServiceTest extends TestCase
         $user = new User;
         $user->emailVerifiedAt = $verifiedAt = Carbon::now();
 
-        $this->service('P1W')->needToVerifyEmail($user);
+        $this->service(new \DateInterval('P1W'))->needToVerifyEmail($user);
 
         $this->assertTrue($verifiedAt->equalTo($user->emailVerifiedAt));
     }
 
-    public function test_notice_view_uses_default_template()
+    public function test_resolve_user_keeps_authenticatable()
     {
-        $view = $this->service('P1W')->view(Request::create('/email/otp'), 0);
+        $user = new User;
 
-        $this->assertSame('otp::verify-email', $view->name());
+        $this->assertSame($user, $this->service()->resolveUser($user));
+        $this->assertNull($this->service()->resolveUser(new \stdClass));
     }
 
-    public function test_notice_view_using_overrides_template()
+    public function test_send_new_code_sends_when_user_implements_contract()
     {
-        OtpVerify::verifyEmailRequestView('otp::login');
+        $user = new User;
+        $session = new Session;
 
-        $view = $this->service('P1W')->view(Request::create('/email/otp'), 0);
+        $result = $this->service()->sendNewCode($session, $user);
 
-        $this->assertSame('otp::login', $view->name());
+        $this->assertSame(Otp::OTP_SENT, $result);
+        $this->assertCount(1, $user->sentOtps);
+        $this->assertMatchesRegularExpression('/^\d{6}$/', $user->sentOtps[0]);
+    }
+
+    public function test_send_new_code_fails_for_user_outside_contract()
+    {
+        $this->expectException(\RuntimeException::class);
+
+        $this->service()->sendNewCode(new Session, new PlainUser(1));
     }
 }

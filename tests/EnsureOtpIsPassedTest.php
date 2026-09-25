@@ -16,7 +16,7 @@ class EnsureOtpIsPassedTest extends TestCase
     {
         parent::setUp();
 
-        $this->app->instance(OtpVerify::class, new OtpVerify('P1W'));
+        $this->app->instance(OtpVerify::class, new OtpVerify(new \DateInterval('P1W')));
 
         Route::middleware(['web', EnsureOtpIsPassed::class])
             ->get('/otp-protected', fn () => 'protected content');
@@ -29,7 +29,7 @@ class EnsureOtpIsPassedTest extends TestCase
 
         $this->actingAs($user)
             ->get('/otp-protected')
-            ->assertRedirect('/email/otp');
+            ->assertRedirect('/otp/email');
 
         $this->assertSame(Otp::OTP_SENT, session('status'));
         $this->assertCount(1, $user->sentOtps);

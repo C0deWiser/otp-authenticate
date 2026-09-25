@@ -120,7 +120,7 @@ abstract class Otp
             $this->sendNewCode($session, $user);
 
             throw ValidationException::withMessages([
-                'code' => __(self::OTP_LOST)
+                'code' => trans(self::OTP_LOST)
             ]);
         }
 
@@ -129,7 +129,7 @@ abstract class Otp
             $this->logger?->warning("Otp mismatch");
 
             throw ValidationException::withMessages([
-                'code' => __(self::OTP_MISMATCH)
+                'code' => trans(self::OTP_MISMATCH)
             ]);
         }
 

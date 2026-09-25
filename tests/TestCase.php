@@ -2,6 +2,7 @@
 
 namespace Codewiser\Otp\Tests;
 
+use Codewiser\Otp\Otp;
 use Codewiser\Otp\OtpServiceProvider;
 use Laravel\Fortify\FortifyServiceProvider;
 use Orchestra\Testbench\TestCase as BaseTestCase;
@@ -21,5 +22,9 @@ abstract class TestCase extends BaseTestCase
         $app['config']->set('app.key', 'base64:HDYqVlXI3V0hnqDcV/wAI/cmDX9cHschsamxPQ24kfk=');
         $app['config']->set('cache.default', 'array');
         $app['config']->set('session.driver', 'array');
+
+        // Mimic the published app service provider: register default views.
+        Otp::loginView('otp::login');
+        Otp::verifyEmailView('otp::verify-email');
     }
 }

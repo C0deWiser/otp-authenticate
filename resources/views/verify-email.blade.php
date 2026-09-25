@@ -3,7 +3,8 @@
 
     @include('otp::status')
 
-    <form method="post" action="{{ route('user-otp.verify') }}">
+    <form method="post"
+          action="{{ action([\Codewiser\Otp\Http\Controllers\EmailVerificationController::class, 'verify']) }}">
         @csrf
         @method('put')
 
@@ -19,7 +20,8 @@
         <button type="submit">{{ __('Submit') }}</button>
     </form>
 
-    <form method="post" action="{{ route('user-otp.send') }}">
+    <form method="post"
+          action="{{ action([\Codewiser\Otp\Http\Controllers\EmailVerificationController::class, 'issue']) }}">
         @csrf
 
         @if($availableIn)

@@ -16,7 +16,7 @@ class OtpThrottleTest extends TestCase
     {
         parent::getEnvironmentSetUp($app);
 
-        $app->instance(OtpVerify::class, new OtpVerify('P1W'));
+        $app->instance(OtpVerify::class, new OtpVerify(new \DateInterval('P1W')));
 
         $app->make(RateLimiter::class)->for(OtpRateLimiter::ISSUE, fn (Request $request) => [
             Limit::perMinute(1)->by('user:'.$request->user()?->getAuthIdentifier()),
@@ -31,7 +31,7 @@ class OtpThrottleTest extends TestCase
     public function test_plain_limit_is_decorated_at_runtime()
     {
         $limits = $this->app->make(RateLimiter::class)
-            ->limiter(OtpRateLimiter::ISSUE)(Request::create('/email/otp', 'POST'));
+            ->limiter(OtpRateLimiter::ISSUE)(Request::create('/otp/email', 'POST'));
 
         $this->assertCount(1, $limits);
         $this->assertIsCallable($limits[0]->responseCallback);
@@ -43,12 +43,12 @@ class OtpThrottleTest extends TestCase
 
         $this->actingAs($user);
 
-        $this->post('/email/otp')
+        $this->post('/otp/email')
             ->assertRedirect();
 
         $this->assertCount(1, $user->sentOtps);
 
-        $response = $this->post('/email/otp');
+        $response = $this->post('/otp/email');
 
         $response->assertStatus(302);
         $response->assertSessionHas('status', Otp::OTP_THROTTLE);
@@ -60,8 +60,8 @@ class OtpThrottleTest extends TestCase
     {
         $this->actingAs(new User);
 
-        $this->post('/email/otp');
-        $this->post('/email/otp')
+        $this->post('/otp/email');
+        $this->post('/otp/email')
             ->assertHeader('X-RateLimit-Limit', '1')
             ->assertHeader('X-RateLimit-Remaining', '0');
     }
@@ -70,10 +70,10 @@ class OtpThrottleTest extends TestCase
     {
         $this->actingAs(new User);
 
-        $this->put('/email/otp', ['otp' => '000000'])
-            ->assertSessionHasErrors('otp');
+        $this->put('/otp/email', ['code' => '000000'])
+            ->assertSessionHasErrors('code');
 
-        $this->put('/email/otp', ['otp' => '000000'])
+        $this->put('/otp/email', ['code' => '000000'])
             ->assertStatus(429)
             ->assertSee('custom throttled');
     }

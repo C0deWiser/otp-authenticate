@@ -1,20 +1,21 @@
 # One time passwords for Laravel
 
-In a very simple case, our Laravel applications authenticate users by login 
-and password. Sometimes we force our applications to verify users' emails.
+In a very simple case, our Laravel application authenticates users by login 
+and password. Sometimes we force our application to verify users' emails.
 
 This package brings two optional services:
 
-* Allow user to authenticate with one-time-password (via email).
+* Allow user to authenticate with one-time-password (via email, without 
+  password).
 * Force user to periodically revalidate an email.
 
 The authentication process will be:
 
 * user provides an email (login)
 * application sends an email with one time password
-* user affirms authentication providing this email (login)
+* user affirms authentication providing this password
 
-> Use `login-otp` route to authenticate users.
+> Use `/otp/login` route to authenticate users.
 
 The revalidation process will be:
 
@@ -38,15 +39,11 @@ php artisan vendor:publish --tag=otp
 
 Register `\App\Providers\OtpServiceProvider` to `bootstrap/providers.php` file.
 
-Customize the views published to `resources/views/vendor/otp`.
-
 ## Implementation
 
-Apply the `MustVerifyEmailWithOtp` contract and the `MustVerifyEmailWithOtp`
-trait to a `User` model. This contract and trait extend the well known
-`MustVerifyEmail`.
-
-_Models/User.php_
+Apply the `MustVerifyEmailWithOtp` interface and, optionally, the 
+`MustVerifyEmailWithOtp` trait to a `User` model. This interface extends the 
+well known `MustVerifyEmail`.
 
 ```php
 use Codewiser\Otp\Contracts\MustVerifyEmailWithOtp;
@@ -88,13 +85,13 @@ public function register(): void
 
 ### Customizing View 
 
-We need to instruct package how to return the "login" view.
+We need to instruct package how to return the "otp/login" view.
 
 All of the authentication view's rendering logic may be customized using the 
-appropriate methods available via the `\Codewiser\Otp\OtpService` class. 
+appropriate methods available via the `\Codewiser\Otp\Otp` class. 
 Typically, you should call this method from the boot method 
 of your application's `App\Providers\OtpServiceProvider` class. Service will 
-take care of defining the `/login/otp` route that returns this view:
+take care of defining the `/otp/login` route that returns this view:
 
 ```php
 use Codewiser\Otp\Otp;
@@ -109,10 +106,10 @@ public function boot(): void
 ```
 
 `Login` template should include:
-* a form that makes a POST request to `/login/otp`. 
+* a form that makes a POST request to `/otp/login`. 
   This endpoint expects a string `email` and sends a 
   notification with one-time-password to a given email.
-* a form that makes a PUT request to `/login/otp`.
+* a form that makes a PUT request to `/otp/login`.
   This endpoint expects a string `email` and a `code`. 
   The name of the `email` field should match the `email` value 
   within the `config/fortify.php` configuration file. 
@@ -130,10 +127,7 @@ the validation errors will be returned with the 422 HTTP response.
 ## Email Verification
 
 You may wish for users to **periodically re-verify** their email address before 
-they continue accessing your application. To get started, you should ensure 
-that your `App\Models\User` class implements the 
-`Codewiser\Otp\Contracts\MustVerifyEmailWithOtp` interface instead of 
-`Illuminate\Contracts\Auth\MustVerifyEmail`.
+they continue accessing your application.
 
 ### Verification Frequency
 
@@ -150,13 +144,15 @@ use Codewiser\Otp\OtpVerify;
 public function register(): void
 {
     $this->app->singleton(OtpVerify::class,
-        fn($app) => new OtpVerify('P1W')
+        fn($app) => new OtpVerify(
+            new \DateInterval('P1W')
+        )
     );
 }
 ```
 
-For example, if we define `new OtpVerify('P1M')`, users should
-revalidate an email using otp at least once a month.
+For example, if we pass date interval `P1M`, users should revalidate an 
+email at least once a month.
 
 Passing `null` means that every authentication process is accompanied by an otp.
 
@@ -166,7 +162,7 @@ Passing `null` means that every authentication process is accompanied by an otp.
 ### Customizing View
 
 All of the view's rendering logic may be customized using the
-appropriate methods available via the `\Codewiser\Otp\OtpService` class.
+appropriate methods available via the `\Codewiser\Otp\Otp` class.
 Typically, you should call this method from the boot method
 of your application's `App\Providers\OtpServiceProvider` class.
 
@@ -183,31 +179,31 @@ public function boot(): void
 ```
 
 Service will take care of defining the route that displays this view when a 
-user is redirected to the `/email/otp` endpoint by 
+user is redirected to the `/otp/email` endpoint by 
 `Codewiser\Otp\Http\Middleware\EnsureOtpIsPassed` middleware.
 
 `Verify email` template should include:
-* a form that makes a POST request to `/email/otp`.
-  This endpoint sends a notification with one-time-password to current user.
-* a form that makes a PUT request to `/email/otp`.
+* a form that makes a POST request to `/otp/email`.
+  This endpoint sends a notification with one-time-password to a current user.
+* a form that makes a PUT request to `/otp/email`.
   This endpoint expects a string `code` to verify.
 
-Every time user successfully verified his email, the service updates 
+Every time user successfully verified the email, the service updates 
 `email_verified_at` attribute.
 
 ### Protecting Routes
 
 To specify that a route or group of routes requires that the user has 
 verified their email address, you should attach `EnsureOtpIsPassed` 
-middleware to the route:
+middleware to the route. This middleware extends the built-in Laravel's
+`verified` middleware.
 
-Email revalidation will
 ```php
 use Codewiser\Otp\Http\Middleware\EnsureOtpIsPassed;
 
 Route::get('/dashboard', function () {
     // ...
-})->middleware([EnsureOtpIsPassed]);
+})->middleware(EnsureOtpIsPassed::class);
 ```
 
 ## Rate limiting
@@ -223,6 +219,7 @@ Since the login routes are used by guests, key your limits by the submitted
 
 namespace App\Providers;
 
+use Codewiser\Otp\RateLimiter\OtpRateLimiter;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -233,21 +230,31 @@ use Illuminate\Support\ServiceProvider;
 public function boot(): void
 {
     // Named RateLimiter for issuing otp code
-    RateLimiter::for('otp-issue', fn(Request $request) => [
-        Limit::perMinute(1)->by(
-            'minute:'.$request->user()?->id.$request->input('email')
-        ),
-        Limit::perDay(15)->by(
-            'day:'.$request->user()?->id.$request->input('email')
-        ),
-    ]);
+    RateLimiter::for(OtpRateLimiter::ISSUE, function(Request $request) {
+    
+        $throttleKey =
+                $request->user()?->id.'|'.
+                $request->input('email').'|'.
+                $request->ip();
+    
+        return [
+            Limit::perMinute(1)->by('minute:'.$throttleKey),
+            Limit::perDay(15)->by('day:'.$throttleKey),
+        ];
+    });
 
     // Named RateLimiter for verifying otp code (bruteforce protection)
-    RateLimiter::for('otp-verify', fn(Request $request) => [
-        Limit::perDay(30)->by(
-            $request->user()?->id.$request->input('email')
-        )
-    ]);
+    RateLimiter::for(OtpRateLimiter::VERIFY, function(Request $request)  {
+    
+        $throttleKey =
+                $request->user()?->id.'|'.
+                $request->input('email').'|'.
+                $request->ip();
+    
+        return [
+            Limit::perDay(30)->by($throttleKey)
+        ];
+    });
 }
 ```
 
@@ -259,7 +266,7 @@ generate otp codes. And you may register a custom function for composing a
 notification.
 
 ```php
-use Codewiser\Otp\Notifications\EmailWithOtp;
+use Codewiser\Otp\Notifications\OtpNotification;
 use Codewiser\Otp\Otp;
 
 /**
@@ -267,10 +274,16 @@ use Codewiser\Otp\Otp;
  */
 public function boot(): void
 {
+    // Login custom view
+    Otp::loginView('otp.login');
+    
+    // Verify email custom view
+    Otp::verifyEmailView('otp.verify-email');
+
     // Callback to generate one-time-password.
     Otp::newCodeUsing(fn() => rand(1000, 9999));
     
-    EmailWithOtp::toMailUsing(function(object $notifiable, string $code) {
+    OtpNotification::toMailUsing(function(object $notifiable, string $code) {
         // Custom notification.
     });
 }

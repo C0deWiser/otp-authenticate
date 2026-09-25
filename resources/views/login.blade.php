@@ -4,7 +4,8 @@
     @include('otp::status')
 
     @if (session('status') === \Codewiser\Otp\Otp::OTP_SENT)
-        <form method="post" action="{{ route('login-otp.verify') }}">
+        <form method="post"
+              action="{{ action([\Codewiser\Otp\Http\Controllers\AuthenticatedSessionController::class, 'verify']) }}">
             @csrf
             @method('put')
 
@@ -35,7 +36,8 @@
         </form>
     @endif
 
-    <form method="post" action="{{ route('login-otp.send') }}">
+    <form method="post"
+          action="{{ action([\Codewiser\Otp\Http\Controllers\AuthenticatedSessionController::class, 'issue']) }}">
         @csrf
 
         <div class="mb-4 font-medium text-sm text-green-600">

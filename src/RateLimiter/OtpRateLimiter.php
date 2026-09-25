@@ -109,7 +109,7 @@ class OtpRateLimiter
             ? new JsonResponse(['message' => trans(Otp::OTP_THROTTLE)], 429, $headers)
             : redirect()
                 ->back(302, $headers)
-                ->with('status', Otp::OTP_THROTTLE)
+                ->with('status', trans(Otp::OTP_THROTTLE))
                 ->with('delay', $this->forHumans());
     }
 }

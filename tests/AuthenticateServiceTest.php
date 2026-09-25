@@ -2,20 +2,20 @@
 
 namespace Codewiser\Otp\Tests;
 
-use Codewiser\Otp\OtpAuthenticate;
 use Codewiser\Otp\Otp;
+use Codewiser\Otp\OtpAuthenticate;
+use Codewiser\Otp\Tests\Fakes\Guard;
 use Codewiser\Otp\Tests\Fakes\PlainUser;
 use Codewiser\Otp\Tests\Fakes\Session;
 use Codewiser\Otp\Tests\Fakes\User;
 use Codewiser\Otp\Tests\Fakes\UserProvider;
-use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
 class AuthenticateServiceTest extends TestCase
 {
     private function service(array $users = [], string $key = 'email'): OtpAuthenticate
     {
-        return new OtpAuthenticate(new UserProvider($users, $key));
+        return new OtpAuthenticate(new UserProvider($users, $key), new Guard);
     }
 
     public function test_send_new_code_stores_six_digit_code_and_notifies()
@@ -53,6 +53,19 @@ class AuthenticateServiceTest extends TestCase
         $this->assertSame([], $session->all());
     }
 
+    public function test_send_new_code_is_silent_for_resolved_user_missing_the_otp_contract()
+    {
+        $user = new PlainUser(1);
+
+        $service = $this->service([$user->id => $user], 'id');
+        $session = new Session;
+
+        $result = $service->sendNewCode($session, $user->id);
+
+        $this->assertSame(Otp::OTP_SENT, $result);
+        $this->assertSame([], $session->all());
+    }
+
     public function test_passed_and_not_passed()
     {
         $service = $this->service();
@@ -77,8 +90,8 @@ class AuthenticateServiceTest extends TestCase
             $service->validate($session, $user, '123456');
             $this->fail('ValidationException was not thrown.');
         } catch (ValidationException $e) {
-            $this->assertArrayHasKey('otp', $e->errors());
-            $this->assertSame(Otp::OTP_LOST, $e->errors()['otp'][0]);
+            $this->assertArrayHasKey('code', $e->errors());
+            $this->assertSame(Otp::OTP_LOST, $e->errors()['code'][0]);
         }
 
         $this->assertCount(1, $user->sentOtps);
@@ -99,8 +112,8 @@ class AuthenticateServiceTest extends TestCase
             $service->validate($session, $user, $wrongCode);
             $this->fail('ValidationException was not thrown.');
         } catch (ValidationException $e) {
-            $this->assertArrayHasKey('otp', $e->errors());
-            $this->assertSame(Otp::OTP_MISMATCH, $e->errors()['otp'][0]);
+            $this->assertArrayHasKey('code', $e->errors());
+            $this->assertSame(Otp::OTP_MISMATCH, $e->errors()['code'][0]);
         }
 
         $this->assertCount(1, $user->sentOtps);
@@ -124,7 +137,7 @@ class AuthenticateServiceTest extends TestCase
             $service->validate($session, $user, '1e5');
             $this->fail('ValidationException was not thrown.');
         } catch (ValidationException $e) {
-            $this->assertSame(Otp::OTP_MISMATCH, $e->errors()['otp'][0]);
+            $this->assertSame(Otp::OTP_MISMATCH, $e->errors()['code'][0]);
         }
     }
 
@@ -200,7 +213,7 @@ class AuthenticateServiceTest extends TestCase
         $this->assertTrue($session->get('otp_passed'));
     }
 
-    public function test_validate_rejects_unknown_guest_email()
+    public function test_validate_throws_lost_error_for_unknown_guest_email()
     {
         Otp::newCodeUsing(fn () => '123456');
 
@@ -215,11 +228,35 @@ class AuthenticateServiceTest extends TestCase
             $service->validate($session, 'guest@example.com', '123456');
             $this->fail('ValidationException was not thrown.');
         } catch (ValidationException $e) {
-            $this->assertArrayHasKey('otp', $e->errors());
-            $this->assertSame(Otp::OTP_LOST, $e->errors()['otp'][0]);
+            $this->assertArrayHasKey('code', $e->errors());
+            $this->assertSame(Otp::OTP_LOST, $e->errors()['code'][0]);
         }
 
         $this->assertFalse($session->get('otp_passed', false));
+    }
+
+    public function test_validate_fails_when_code_is_right_but_user_is_gone()
+    {
+        Otp::newCodeUsing(fn () => '123456');
+
+        $issuingService = $this->service([
+            'user@example.com' => new User,
+        ]);
+        $session = new Session;
+
+        $issuingService->sendNewCode($session, 'user@example.com');
+
+        // Same session (the code is stored there), but the user can no longer
+        // be resolved (e.g. account was removed between sending and verifying).
+        $service = $this->service();
+
+        try {
+            $service->validate($session, 'user@example.com', '123456');
+            $this->fail('ValidationException was not thrown.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('email', $e->errors());
+            $this->assertSame(__('auth.failed'), $e->errors()['email'][0]);
+        }
     }
 
     public function test_validate_rejects_code_issued_for_another_user()
@@ -245,7 +282,7 @@ class AuthenticateServiceTest extends TestCase
             $service->validate($session, $victim->email, $code);
             $this->fail('ValidationException was not thrown.');
         } catch (ValidationException $e) {
-            $this->assertArrayHasKey('otp', $e->errors());
+            $this->assertArrayHasKey('code', $e->errors());
         }
 
         $this->assertFalse($session->get('otp_passed', false));
@@ -274,19 +311,33 @@ class AuthenticateServiceTest extends TestCase
         $this->assertNull($service->resolveUser('ghost'));
     }
 
-    public function test_login_view_uses_default_template()
+    public function test_authenticate_logs_the_user_in_and_marks_as_passed()
     {
-        $view = $this->service()->view(Request::create('/login/otp'), 0);
+        $guard = new Guard;
+        $service = new OtpAuthenticate(new UserProvider, $guard);
+        $session = new Session;
+        $user = new User;
 
-        $this->assertSame('otp::login', $view->name());
+        $service->authenticate($session, $user, true);
+
+        $this->assertSame([$user], $guard->logins);
+        $this->assertSame($user, $guard->user);
+        $this->assertTrue($session->get('otp_passed'));
     }
 
-    public function test_login_view_using_overrides_template()
+    public function test_authenticate_does_not_mark_as_passed_when_session_is_not_regenerated()
     {
-        OtpAuthenticate::loginRequestView(fn () => view('otp::verify-email'));
+        $session = new class extends Session {
+            public function regenerate($destroy = false): bool
+            {
+                return false;
+            }
+        };
 
-        $view = $this->service()->view(Request::create('/login/otp'), 0);
+        $service = new OtpAuthenticate(new UserProvider, new Guard);
 
-        $this->assertSame('otp::verify-email', $view->name());
+        $service->authenticate($session, new User, false);
+
+        $this->assertFalse($session->get('otp_passed', false));
     }
 }

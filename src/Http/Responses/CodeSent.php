@@ -8,6 +8,10 @@ use Symfony\Component\HttpFoundation\Response;
 
 class CodeSent implements SendRequestResponse
 {
+    /**
+     * @param  string  $status
+     * @param  string  $redirectTo Route path to redirect to.
+     */
     public function __construct(protected string $status, protected string $redirectTo)
     {
         //
@@ -17,6 +21,6 @@ class CodeSent implements SendRequestResponse
     {
         return $request->wantsJson()
             ? new JsonResponse(['message' => trans($this->status)], 200)
-            : redirect()->route($this->redirectTo)->with('status', trans($this->status));
+            : redirect()->to($this->redirectTo)->with('status', trans($this->status));
     }
 }

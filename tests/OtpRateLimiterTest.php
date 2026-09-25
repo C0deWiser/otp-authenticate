@@ -20,7 +20,7 @@ class OtpRateLimiterTest extends TestCase
 
     private function limiter(): OtpRateLimiter
     {
-        return OtpRateLimiter::for(OtpRateLimiter::ISSUE, Request::create('/email/otp', 'GET'));
+        return OtpRateLimiter::for(OtpRateLimiter::ISSUE, Request::create('/otp/email', 'GET'));
     }
 
     public function test_limits_have_expected_structure()
@@ -49,7 +49,7 @@ class OtpRateLimiterTest extends TestCase
 
     public function test_available_in_is_zero_when_limiter_is_not_registered()
     {
-        $limiter = OtpRateLimiter::for(OtpRateLimiter::VERIFY, Request::create('/email/otp', 'GET'));
+        $limiter = OtpRateLimiter::for(OtpRateLimiter::VERIFY, Request::create('/otp/email', 'GET'));
 
         $this->assertSame(0, $limiter->availableIn());
     }

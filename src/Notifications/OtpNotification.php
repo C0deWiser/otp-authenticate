@@ -7,7 +7,7 @@ use Illuminate\Contracts\Mail\Mailable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class EmailWithOtp extends Notification
+class OtpNotification extends Notification
 {
     /**
      * The callback that should be used to build the mail message.
