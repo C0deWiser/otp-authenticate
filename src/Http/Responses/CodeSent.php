@@ -21,6 +21,6 @@ class CodeSent implements SendRequestResponse
     {
         return $request->wantsJson()
             ? new JsonResponse(['message' => trans($this->status)], 200)
-            : redirect()->to($this->redirectTo)->with('status', trans($this->status));
+            : redirect()->to($this->redirectTo)->with('status', $this->status);
     }
 }

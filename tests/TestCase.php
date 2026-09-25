@@ -2,6 +2,7 @@
 
 namespace Codewiser\Otp\Tests;
 
+use Codewiser\Fortify\AssetsServiceProvider;
 use Codewiser\Otp\Otp;
 use Codewiser\Otp\OtpServiceProvider;
 use Laravel\Fortify\FortifyServiceProvider;
@@ -13,6 +14,7 @@ abstract class TestCase extends BaseTestCase
     {
         return [
             FortifyServiceProvider::class,
+            AssetsServiceProvider::class,
             OtpServiceProvider::class,
         ];
     }

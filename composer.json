@@ -25,7 +25,7 @@
   "minimum-stability": "stable",
   "require": {
     "php": "^8.3",
-    "laravel/fortify": ">=1.0",
+    "codewiser/fortify": "*",
     "laravel/framework": ">=13.0"
   },
   "require-dev": {

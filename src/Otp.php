@@ -18,10 +18,11 @@ class Otp
 {
     use LoggerAwareTrait;
 
-    const string SENT = 'otp-sent';
-    const string LOST = 'otp-lost';
-    const string MISMATCH = 'otp-mismatch';
-    const string THROTTLE = 'otp-throttle';
+    const string SENT = 'sent';
+    const string LOST = 'lost';
+    const string MISMATCH = 'mismatch';
+    const string THROTTLE = 'throttled';
+    const string USER = 'user';
 
     /**
      * Specify which view should be used as the login view.
@@ -114,7 +115,7 @@ class Otp
             $this->sendNewCode($session, $user);
 
             throw ValidationException::withMessages([
-                'code' => trans(self::LOST)
+                'code' => trans('otp::messages.'.self::LOST)
             ]);
         }
 
@@ -123,7 +124,7 @@ class Otp
             $this->logger?->warning("Otp mismatch");
 
             throw ValidationException::withMessages([
-                'code' => trans(self::MISMATCH)
+                'code' => trans('otp::messages.'.self::MISMATCH)
             ]);
         }
 

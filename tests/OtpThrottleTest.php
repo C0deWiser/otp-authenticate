@@ -36,7 +36,7 @@ class OtpThrottleTest extends TestCase
         $this->assertIsCallable($limits[0]->responseCallback);
     }
 
-    public function test_throttled_user_gets_redirect_with_delay_instead_of_429()
+    public function test_throttled_user_gets_redirect_with_error_instead_of_429()
     {
         $user = new User;
 
@@ -50,8 +50,9 @@ class OtpThrottleTest extends TestCase
         $response = $this->post('/otp/email');
 
         $response->assertStatus(302);
-        $response->assertSessionHas('status', Otp::THROTTLE);
-        $response->assertSessionHas('delay');
+        $response->assertSessionHasErrors([
+            'code' => trans('otp::messages.'.Otp::THROTTLE, ['seconds' => 60]),
+        ]);
         $this->assertCount(1, $user->sentOtps);
     }
 

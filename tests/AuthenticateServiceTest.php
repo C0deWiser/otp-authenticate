@@ -91,7 +91,7 @@ class AuthenticateServiceTest extends TestCase
             $this->fail('ValidationException was not thrown.');
         } catch (ValidationException $e) {
             $this->assertArrayHasKey('code', $e->errors());
-            $this->assertSame(Otp::LOST, $e->errors()['code'][0]);
+            $this->assertSame(trans('otp::messages.'.Otp::LOST), $e->errors()['code'][0]);
         }
 
         $this->assertCount(1, $user->sentOtps);
@@ -113,7 +113,7 @@ class AuthenticateServiceTest extends TestCase
             $this->fail('ValidationException was not thrown.');
         } catch (ValidationException $e) {
             $this->assertArrayHasKey('code', $e->errors());
-            $this->assertSame(Otp::MISMATCH, $e->errors()['code'][0]);
+            $this->assertSame(trans('otp::messages.'.Otp::MISMATCH), $e->errors()['code'][0]);
         }
 
         $this->assertCount(1, $user->sentOtps);
@@ -137,7 +137,7 @@ class AuthenticateServiceTest extends TestCase
             $service->validate($session, $user, '1e5');
             $this->fail('ValidationException was not thrown.');
         } catch (ValidationException $e) {
-            $this->assertSame(Otp::MISMATCH, $e->errors()['code'][0]);
+            $this->assertSame(trans('otp::messages.'.Otp::MISMATCH), $e->errors()['code'][0]);
         }
     }
 
@@ -229,7 +229,7 @@ class AuthenticateServiceTest extends TestCase
             $this->fail('ValidationException was not thrown.');
         } catch (ValidationException $e) {
             $this->assertArrayHasKey('code', $e->errors());
-            $this->assertSame(Otp::LOST, $e->errors()['code'][0]);
+            $this->assertSame(trans('otp::messages.'.Otp::LOST), $e->errors()['code'][0]);
         }
 
         $this->assertFalse($session->get('otp_passed', false));
@@ -255,7 +255,7 @@ class AuthenticateServiceTest extends TestCase
             $this->fail('ValidationException was not thrown.');
         } catch (ValidationException $e) {
             $this->assertArrayHasKey('email', $e->errors());
-            $this->assertSame(__('auth.failed'), $e->errors()['email'][0]);
+            $this->assertSame(trans('otp::messages.'.Otp::USER), $e->errors()['email'][0]);
         }
     }
 

@@ -68,7 +68,7 @@ class OtpAuthenticate extends Otp
             $this->logger?->warning("Otp verified, but user not found");
 
             throw ValidationException::withMessages([
-                'email' => trans('auth.failed')
+                'email' => trans('otp::messages.'.self::USER)
             ]);
         }
 

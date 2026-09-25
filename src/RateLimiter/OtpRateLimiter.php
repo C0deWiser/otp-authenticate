@@ -75,10 +75,14 @@ class OtpRateLimiter
             return 0;
         }
 
-        $availableIn = PHP_INT_MAX;
+        $availableIn = 0;
 
         foreach ($limits as $limit) {
-            $availableIn = min($availableIn, RateLimiter::availableIn($limit['key']));
+            if (RateLimiter::attempts($limit['key']) < $limit['maxAttempts']) {
+                continue;
+            }
+
+            $availableIn = max($availableIn, RateLimiter::availableIn($limit['key']));
         }
 
         return $availableIn;
@@ -105,11 +109,19 @@ class OtpRateLimiter
      */
     public function response(): Closure
     {
-        return fn(Request $request, array $headers) => $request->expectsJson()
-            ? new JsonResponse(['message' => trans(Otp::THROTTLE)], 429, $headers)
-            : redirect()
-                ->back(302, $headers)
-                ->with('status', trans(Otp::THROTTLE))
-                ->with('delay', $this->forHumans());
+        return function (Request $request, array $headers) {
+
+            $message = trans('otp::messages.'.Otp::THROTTLE, [
+                'seconds' => $this->availableIn()
+            ]);
+
+            return $request->expectsJson()
+                ? new JsonResponse(['message' => $message], 429, $headers)
+                : redirect()
+                    ->back(302, $headers)
+                    ->withErrors([
+                        'code' => $message
+                    ]);
+        };
     }
 }

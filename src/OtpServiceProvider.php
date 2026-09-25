@@ -39,8 +39,11 @@ class OtpServiceProvider extends ServiceProvider
     {
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'otp');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
+        $this->loadTranslationsFrom(__DIR__.'/../lang', 'otp');
 
         $this->publishes([
+            __DIR__.'/../lang'                         => lang_path('vendor/otp'),
+            __DIR__.'/../public'                       => public_path('vendor/otp'),
             __DIR__.'/../resources/views'              => resource_path('views/vendor/otp'),
             __DIR__.'/../stubs/OtpServiceProvider.php' => app_path('Providers/OtpServiceProvider.php'),
         ], 'otp');

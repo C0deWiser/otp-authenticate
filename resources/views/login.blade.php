@@ -1,7 +1,12 @@
-<div>
-    <h1>{{ __('One time password authentication') }}</h1>
+@extends('fortify::layouts.fortify')
 
-    @include('otp::status')
+@section('title', __('One time password authentication'))
+
+@section('content')
+
+    <h1>@lang('One time password authentication')</h1>
+
+    @include('otp::fragments.status')
 
     @if (session('status') === \Codewiser\Otp\Otp::SENT)
         <form method="post"
@@ -10,20 +15,20 @@
             @method('put')
 
             <div>
-                <label for="email">{{ __('Email') }}</label>
+                <label for="email">@lang('Email')</label>
                 <input type="email" id="email" name="email" required readonly value="{{ old('email') }}">
 
                 @error('email')
-                <div class="text-sm text-red-600">{{ $message }}</div>
+                <div class="invalid">{{ $message }}</div>
                 @enderror
             </div>
 
             <div>
-                <label for="code">{{ __('Code') }}</label>
+                <label for="code">@lang('Code')</label>
                 <input type="text" id="code" name="code" required autofocus>
 
                 @error('code')
-                <div class="text-sm text-red-600">{{ $message }}</div>
+                <div class="invalid">{{ $message }}</div>
                 @enderror
             </div>
 
@@ -32,7 +37,7 @@
                 <label for="remember">@lang('Remember me')</label>
             </div>
 
-            <button type="submit">{{ __('Submit') }}</button>
+            <button type="submit">@lang('Submit')</button>
         </form>
     @endif
 
@@ -40,32 +45,29 @@
           action="{{ action([\Codewiser\Otp\Http\Controllers\AuthenticatedSessionController::class, 'issue']) }}">
         @csrf
 
-        <div class="mb-4 font-medium text-sm text-green-600">
-            {{ __('We will not warn you if email is not registered in the application.') }}
-        </div>
+        <p class="alert">
+            @lang('We will not warn you if email is not registered in the application.')
+        </p>
 
         <div>
-            <label for="email">{{ __('Email') }}</label>
+            <label for="email">@lang('Email')</label>
             <input type="email" id="email" name="email" required autofocus autocomplete="email"
                    value="{{ old('email') }}">
 
             @error('email')
-            <div class="text-sm text-red-600">{{ $message }}</div>
+            <div class="invalid">{{ $message }}</div>
             @enderror
         </div>
 
-        @if($availableIn)
-            <!-- implement js countdown here -->
-            <p>{{ __('Next code available in :seconds', ['seconds' => $availableIn]) }}</p>
-        @endif
+        @include('otp::fragments.countdown', ['availableIn' => $availableIn])
 
         <button type="submit">
             @if (session('status') === \Codewiser\Otp\Otp::SENT)
-                {{ __('Send another one') }}
+                @lang('Send another one')
             @else
-                {{ __('Send code') }}
+                @lang('Send code')
             @endif
         </button>
     </form>
 
-</div>
+@endsection
