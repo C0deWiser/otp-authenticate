@@ -1,11 +1,11 @@
 @php use Codewiser\Otp\Http\Controllers\AuthenticatedSessionController; @endphp
 @extends('fortify::layouts.fortify')
 
-@section('title', __('Authentication'))
+@section('title', __('Authentication with OTP'))
 
 @section('content')
 
-    <h1>@lang('Authentication')</h1>
+    <h1>@lang('Authentication with OTP')</h1>
 
     <p class="notice">
         @lang('Authenticate with one time password. Provide your email address and we will send you a code.')
@@ -28,6 +28,7 @@
         </div>
 
         @if (old('email'))
+
             <div>
                 <label for="code">@lang('Code')</label>
                 <input type="text" id="code" name="code" autofocus>

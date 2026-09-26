@@ -2,6 +2,7 @@
 
 use Codewiser\Otp\Http\Controllers\AuthenticatedSessionController;
 use Codewiser\Otp\Http\Controllers\EmailVerificationController;
+use Codewiser\Otp\Http\Middleware\EnsureOtpIsPassed;
 use Codewiser\Otp\RateLimiter\OtpRateLimiter;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Route;
@@ -15,6 +16,7 @@ Route::middleware('web')
             ->group(function () {
                 Route::get('/', [EmailVerificationController::class, 'show'])->name('email');
                 Route::post('/', [EmailVerificationController::class, 'store'])->name('email.store');
+
             });
 
         Route::middleware('guest')
@@ -24,3 +26,7 @@ Route::middleware('web')
                 Route::post('/', [AuthenticatedSessionController::class, 'store'])->name('login.store');
             });
     });
+
+Route::view('/example/otp-passed', 'otp::examples.otp-passed')
+    ->middleware(['web', 'verified.otp'])
+    ->name('otp-passed.example');

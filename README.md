@@ -41,8 +41,8 @@ Register `\App\Providers\OtpServiceProvider` to `bootstrap/providers.php` file.
 
 ## Implementation
 
-Apply the `MustVerifyEmailWithOtp` interface and, optionally, the 
-`MustVerifyEmailWithOtp` trait to a `User` model. This interface extends the 
+Apply the `MustVerifyEmailWithOtp` contract and, optionally, the 
+`MustVerifyEmailWithOtp` trait to a `User` model. This contract extends the 
 well known `MustVerifyEmail`.
 
 ```php
@@ -246,22 +246,26 @@ the validation errors will be returned with the 422 HTTP response.
 
 ### Protecting Routes
 
-To specify that a route or group of routes requires that the user has 
-verified their email address, you should attach `EnsureOtpIsPassed` 
-middleware to the route. This middleware extends the built-in Laravel's
-`verified` middleware.
+Route middleware may be used to force users to re-verify email to access a 
+given route. Service includes a `verified.otp` middleware alias, which is an 
+alias for the `Codewiser\Otp\Http\Middleware\EnsureOtpIsPassed` middleware 
+class. All you need to do is attach the `verified.otp` middleware to a route 
+definition. 
 
-`EnsureOtpIsPassed` handles only authenticated web requests, if `User` model 
-implemented `MustVerifyEmailWithOtp` contract. Otherwise, request will be 
-delegated to the parent `EnsureEmailIsVerified` middleware.
+`verified.otp` middleware extends the built-in Laravel's `verified` 
+middleware. `verified.otp` handles only authenticated web requests, if 
+`User` model implemented `MustVerifyEmailWithOtp` contract. Otherwise, 
+request will be delegated to the parent `verified` middleware.
 
 ```php
-use Codewiser\Otp\Http\Middleware\EnsureOtpIsPassed;
-
 Route::get('/dashboard', function () {
     // ...
-})->middleware(EnsureOtpIsPassed::class);
+})->middleware(['auth', 'verified.otp']);
 ```
+
+If a user with outdated email attempts to access a route that has been assigned 
+this middleware, they will automatically be redirected to the `otp.email` 
+named route.
 
 ## Rate limiting
 
