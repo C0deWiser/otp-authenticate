@@ -6,7 +6,7 @@ use Codewiser\Otp\Contracts\CodeVerifiedResponse;
 use Codewiser\Otp\Contracts\LoginViewResponse;
 use Codewiser\Otp\Contracts\CodeSentResponse;
 use Codewiser\Otp\Contracts\ThrottledResponse;
-use Codewiser\Otp\OtpAuthenticate;
+use Codewiser\Otp\Otp;
 use Codewiser\Otp\RateLimiter\OtpRateLimiter;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\Request;
@@ -15,7 +15,7 @@ use Laravel\Fortify\Fortify;
 
 class AuthenticatedSessionController
 {
-    public function __construct(public OtpAuthenticate $otp)
+    public function __construct(public Otp $otp)
     {
         //
     }
@@ -34,9 +34,12 @@ class AuthenticatedSessionController
     public function store(Request $request)
     {
         $name = $request->has('send') ? OtpRateLimiter::ISSUE : OtpRateLimiter::VERIFY;
-        $code = fn(Request $request) => $request->has('send') ? $this->issue($request) : $this->verify($request);
 
         $throttle = OtpRateLimiter::for($name, $request);
+
+        $code = fn(Request $request) => $request->has('send')
+            ? $this->issue($request)
+            : $this->verify($request, $throttle);
 
         return $throttle->attempt($code)
             ?: app(ThrottledResponse::class, ['limiter' => $throttle]);
@@ -45,12 +48,12 @@ class AuthenticatedSessionController
     protected function issue(Request $request)
     {
         $data = $request->validate([
-            Fortify::email() => 'required|email'
+            'email' => 'required|email'
         ]);
 
         $status = $this->otp->sendNewCode(
             $request->session(),
-            Str::lower($data[Fortify::email()]),
+            Str::lower($data['email']),
         );
 
         return app(CodeSentResponse::class, [
@@ -59,17 +62,17 @@ class AuthenticatedSessionController
         ]);
     }
 
-    protected function verify(Request $request)
+    protected function verify(Request $request, OtpRateLimiter $limiter)
     {
         $data = $request->validate([
-            Fortify::email() => 'required|email',
-            'code'           => 'required|string',
-            'remember'       => 'sometimes',
+            'email'    => 'required|email',
+            'code'     => 'required|string',
+            'remember' => 'sometimes',
         ]);
 
         $user = $this->otp->validate(
             $request->session(),
-            Str::lower($data[Fortify::email()]),
+            Str::lower($data['email']),
             $data['code']
         );
 
@@ -80,6 +83,8 @@ class AuthenticatedSessionController
                 (bool) ($data['remember'] ?? false)
             );
         }
+
+        $limiter->clear();
 
         return app(CodeVerifiedResponse::class);
     }

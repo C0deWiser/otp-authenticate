@@ -2,12 +2,9 @@
 
 namespace Codewiser\Otp\RateLimiter;
 
-use Closure;
-use Codewiser\Otp\Otp;
 use Exception;
+use InvalidArgumentException;
 use Illuminate\Cache\RateLimiting\Limit;
-use Illuminate\Contracts\Support\Responsable;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\RateLimiter;
@@ -16,7 +13,7 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Helper class, that handles Laravel RateLimiter.
  */
-class OtpRateLimiter implements Responsable
+class OtpRateLimiter
 {
     const string ISSUE = 'otp-issue';
     const string VERIFY = 'otp-verify';
@@ -26,24 +23,46 @@ class OtpRateLimiter implements Responsable
         return new static($name, $request);
     }
 
+    /**
+     * Limits of the current request.
+     *
+     * They are resolved on creation, because a key may be derived from the
+     * request, and a flow may authenticate the user in between counting and
+     * clearing its attempts. A limiter built afterwards would count against
+     * another key.
+     *
+     * @var array<int, array{
+     *     key: string,
+     *     maxAttempts: integer,
+     *     decaySeconds: integer,
+     *     responseCallback: null|callable
+     * }>
+     */
+    protected array $limits;
+
     public function __construct(public string $name, public Request $request)
     {
-        //
+        $this->limits = $this->resolveLimits();
     }
 
     /**
      * Get RateLimiter limits.
      *
-     * @return array{
+     * @return array<int, array{
      *     key: string,
      *     maxAttempts: integer,
      *     decaySeconds: integer,
-     *     responseCallback: callable
-     * }
+     *     responseCallback: null|callable
+     * }>
      *
      * @see ThrottleRequests::handleRequestUsingNamedLimiter()
      */
     public function limits(): array
+    {
+        return $this->limits;
+    }
+
+    protected function resolveLimits(): array
     {
         $limiter = RateLimiter::limiter($this->name);
 
@@ -57,13 +76,59 @@ class OtpRateLimiter implements Responsable
 
         return array_map(
             fn(Limit $limit) => [
-                'key'              => md5($this->name.$limit->key),
+                'key'              => md5($this->name.$this->key($limit)),
+                'raw' => $this->key($limit),
                 'maxAttempts'      => $limit->maxAttempts,
                 'decaySeconds'     => $limit->decaySeconds,
                 'responseCallback' => $limit->responseCallback,
             ],
             $limits
         );
+    }
+
+    /**
+     * Get the key a limit is counted against.
+     *
+     * @throws InvalidArgumentException
+     */
+    protected function key(Limit $limit): string
+    {
+        if (! $limit->key) {
+            throw new InvalidArgumentException(sprintf(
+                'Rate limiter [%s] must scope each of its limits, use ->by() to define a key.',
+                $this->name
+            ));
+        }
+
+        return (string) $limit->key;
+    }
+
+    /**
+     * Get the first exhausted limit.
+     */
+    protected function exhaustedLimit(): ?array
+    {
+        foreach ($this->limits() as $limit) {
+            if (RateLimiter::tooManyAttempts($limit['key'], $limit['maxAttempts'])) {
+                return $limit;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Get a response defined by the exhausted limit, if any.
+     */
+    public function customResponse(Request $request, array $headers = []): ?Response
+    {
+        $limit = $this->exhaustedLimit();
+
+        if ($limit && is_callable($limit['responseCallback'])) {
+            return call_user_func($limit['responseCallback'], $request, $headers);
+        }
+
+        return null;
     }
 
     /**
@@ -78,6 +143,9 @@ class OtpRateLimiter implements Responsable
 
     /**
      * Attempts to execute a callback if it's not limited.
+     *
+     * Limits are hit before the callback is executed, so that failed
+     * attempts (a mismatch throws a ValidationException) are counted too.
      */
     public function attempt(callable $callback)
     {
@@ -89,14 +157,14 @@ class OtpRateLimiter implements Responsable
             }
         }
 
+        foreach ($limits as $limit) {
+            RateLimiter::hit($limit['key'], $limit['decaySeconds']);
+        }
+
         $result = call_user_func($callback, $this->request);
 
         if (is_null($result)) {
             $result = true;
-        }
-
-        foreach ($limits as $limit) {
-            RateLimiter::hit($limit['key'], $limit['decaySeconds']);
         }
 
         return $result;
@@ -261,34 +329,5 @@ class OtpRateLimiter implements Responsable
         } catch (Exception) {
             return (string) $availableIn;
         }
-    }
-
-    /**
-     * Returns Throttled response.
-     */
-    public function toResponse($request): Response
-    {
-        return ($this->response())($request, []);
-    }
-
-    /**
-     * Custom response for the rate limited request.
-     */
-    public function response(): Closure
-    {
-        return function (Request $request, array $headers) {
-
-            $message = trans('otp::messages.'.Otp::THROTTLE, [
-                'seconds' => $this->availableIn()
-            ]);
-
-            return $request->expectsJson()
-                ? new JsonResponse(['message' => $message], 429, $headers)
-                : redirect()
-                    ->back(302, $headers)
-                    ->withErrors([
-                        'code' => $message
-                    ]);
-        };
     }
 }

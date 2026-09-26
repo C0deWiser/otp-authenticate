@@ -27,17 +27,15 @@ class EnsureOtpIsPassed extends EnsureEmailIsVerified
      */
     public function handle($request, Closure $next, $redirectToRoute = null)
     {
-        if ($request->expectsJson()) {
+        $user = $request->user();
+
+        if ($request->expectsJson() || ! $user instanceof MustVerifyEmailWithOtp) {
             return parent::handle($request, $next, $redirectToRoute);
         }
 
-        $user = $request->user();
         $session = $request->session();
 
-        if ($user instanceof MustVerifyEmailWithOtp &&
-            $user->shouldVerifyEmail() &&
-            $this->otp->notPassed($session)
-        ) {
+        if ($user->shouldVerifyEmail() && $this->otp->notPassed($session, $user)) {
 
             if ($redirectToRoute) {
                 $redirect = redirect()->guest(route($redirectToRoute));
@@ -54,7 +52,7 @@ class EnsureOtpIsPassed extends EnsureEmailIsVerified
             $limiter->increment();
 
             return $redirect->with([
-                'status' => $this->otp->sendNewCode($session, $user)
+                'status' => $this->otp->sendNewCode($session, $user, strict: true)
             ]);
         }
 

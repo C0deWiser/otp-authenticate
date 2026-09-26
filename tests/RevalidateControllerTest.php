@@ -4,7 +4,9 @@ namespace Codewiser\Otp\Tests;
 
 use Codewiser\Otp\Otp;
 use Codewiser\Otp\RateLimiter\OtpRateLimiter;
+use Codewiser\Otp\Tests\Fakes\Guard;
 use Codewiser\Otp\Tests\Fakes\User;
+use Codewiser\Otp\Tests\Fakes\UserProvider;
 use Illuminate\Cache\RateLimiter;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -15,7 +17,7 @@ class RevalidateControllerTest extends TestCase
     {
         parent::getEnvironmentSetUp($app);
 
-        $app->instance(Otp::class, new Otp);
+        $app->instance(Otp::class, new Otp(new UserProvider, new Guard));
 
         $app->make(RateLimiter::class)->for(OtpRateLimiter::ISSUE, fn (Request $request) => [
             Limit::perMinute(30)->by($request->user()?->getAuthIdentifier() ?: 'guest'),
@@ -37,9 +39,9 @@ class RevalidateControllerTest extends TestCase
     public function test_notice_route_redirects_when_otp_was_passed()
     {
         $this->actingAs(new User)
-            ->withSession(['otp_passed' => true])
+            ->withSession(['otp_passed:id:1' => true])
             ->get('/otp/email')
-            ->assertRedirect('/');
+            ->assertRedirect('/home');
     }
 
     public function test_notice_route_returns_no_content_for_json()
@@ -86,7 +88,7 @@ class RevalidateControllerTest extends TestCase
         $this->post('/otp/email', ['code' => $code])
             ->assertRedirect();
 
-        $this->assertTrue(session()->get('otp_passed'));
+        $this->assertSame(['otp_passed:id:1' => true], $this->otpPassed());
         $this->assertTrue($user->emailVerified);
     }
 
@@ -103,7 +105,7 @@ class RevalidateControllerTest extends TestCase
             ->postJson('/otp/email', ['code' => $code])
             ->assertOk();
 
-        $this->assertTrue(session()->get('otp_passed'));
+        $this->assertSame(['otp_passed:id:1' => true], $this->otpPassed());
         $this->assertTrue($user->emailVerified);
     }
 
@@ -112,13 +114,19 @@ class RevalidateControllerTest extends TestCase
         $user = new User;
 
         $this->actingAs($user);
-        $this->post('/otp/email');
+        $this->post('/otp/email', ['send' => '']);
 
-        $this->put('/otp/email', ['code' => '000000'])
-            ->assertSessionHasErrors('code');
+        $code = $user->sentOtps[0];
 
-        $this->assertFalse(session()->get('otp_passed', false));
+        // The generated code is random, make sure the guess is not the code.
+        $this->post('/otp/email', ['code' => $code === '000000' ? '111111' : '000000'])
+            ->assertSessionHasErrors([
+                'code' => trans('otp::messages.'.Otp::MISMATCH),
+            ]);
+
+        $this->assertSame([], $this->otpPassed());
         $this->assertFalse($user->emailVerified);
+        $this->assertCount(1, $user->sentOtps);
     }
 
     public function test_verify_sends_a_new_code_when_code_is_lost()
@@ -127,7 +135,9 @@ class RevalidateControllerTest extends TestCase
 
         $this->actingAs($user)
             ->post('/otp/email', ['code' => '123456'])
-            ->assertSessionHasErrors('code');
+            ->assertSessionHasErrors([
+                'code' => trans('otp::messages.'.Otp::LOST),
+            ]);
 
         $this->assertCount(1, $user->sentOtps);
         $this->assertMatchesRegularExpression('/^\d{6}$/', $user->sentOtps[0]);

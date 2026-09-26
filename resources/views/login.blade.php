@@ -11,10 +11,6 @@
         @lang('Authenticate with one time password. Provide your email address and we will send you a code.')
     </p>
 
-    <p class="alert">
-        @lang('We will not warn you if email is not registered in the application.')
-    </p>
-
     @include('otp::fragments.status')
 
     <form method="post" action="{{ action([AuthenticatedSessionController::class, 'store']) }}">
@@ -51,8 +47,12 @@
             @if (old('email'))
                 <button type="submit">@lang('Submit')</button>
             @endif
-            <button type="submit" name="send">@lang('Send code')</button>
+            <button type="submit" name="send" data-retry-after="{{ $availableIn }}">@lang('Send code')</button>
         </div>
     </form>
+
+    @push('scripts')
+        <script src="{{ asset('vendor/otp/countdown.js') }}" defer></script>
+    @endpush
 
 @endsection

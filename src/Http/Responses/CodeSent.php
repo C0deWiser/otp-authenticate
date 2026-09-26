@@ -22,7 +22,7 @@ class CodeSent implements CodeSentResponse
 
     public function toResponse($request): Response
     {
-        $this->logger?->debug(class_basename(__METHOD__), [
+        $this->logger?->debug(class_basename(__CLASS__), [
             'request'    => $request->method().' '.$request->path(),
             'status'     => $this->status,
             'redirectTo' => $this->redirectTo,

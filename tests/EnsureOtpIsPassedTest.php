@@ -4,9 +4,12 @@ namespace Codewiser\Otp\Tests;
 
 use Codewiser\Otp\Http\Middleware\EnsureOtpIsPassed;
 use Codewiser\Otp\Otp;
+use Codewiser\Otp\Tests\Fakes\Guard;
 use Codewiser\Otp\Tests\Fakes\PlainUser;
 use Codewiser\Otp\Tests\Fakes\User;
+use Codewiser\Otp\Tests\Fakes\UserProvider;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 class EnsureOtpIsPassedTest extends TestCase
@@ -15,10 +18,17 @@ class EnsureOtpIsPassedTest extends TestCase
     {
         parent::setUp();
 
-        $this->app->instance(Otp::class, new Otp);
+        $this->app->instance(Otp::class, new Otp(new UserProvider, new Guard));
 
         Route::middleware(['web', EnsureOtpIsPassed::class])
             ->get('/otp-protected', fn () => 'protected content');
+
+        Route::middleware('web')
+            ->post('/otp-protected/logout', function () {
+                Auth::logout();
+
+                return 'logged out';
+            });
     }
 
     public function test_redirects_user_with_outdated_email_verification()
@@ -41,7 +51,7 @@ class EnsureOtpIsPassedTest extends TestCase
         $user->emailVerifiedAt = Carbon::now()->subWeeks(2);
 
         $this->actingAs($user)
-            ->withSession(['otp_passed' => true])
+            ->withSession(['otp_passed:id:1' => true])
             ->get('/otp-protected')
             ->assertOk()
             ->assertSee('protected content');
@@ -77,5 +87,28 @@ class EnsureOtpIsPassedTest extends TestCase
         $this->actingAs($user)
             ->getJson('/otp-protected')
             ->assertStatus(403);
+    }
+
+    public function test_another_user_on_the_same_session_has_to_revalidate()
+    {
+        $first = new User(1);
+        $first->emailVerifiedAt = Carbon::now()->subWeeks(2);
+
+        $this->actingAs($first)
+            ->withSession(['otp_passed:id:1' => true])
+            ->get('/otp-protected')
+            ->assertOk();
+
+        $this->post('/otp-protected/logout');
+
+        $second = new User(2);
+        $second->email = 'second@example.com';
+        $second->emailVerifiedAt = Carbon::now()->subWeeks(2);
+
+        $this->actingAs($second)
+            ->get('/otp-protected')
+            ->assertRedirect('/otp/email');
+
+        $this->assertCount(1, $second->sentOtps);
     }
 }

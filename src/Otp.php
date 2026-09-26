@@ -9,10 +9,14 @@ use Codewiser\Otp\Http\Responses\EmailView;
 use Codewiser\Otp\Http\Responses\LoginView;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Auth\StatefulGuard;
+use Illuminate\Contracts\Auth\UserProvider;
 use Illuminate\Contracts\Session\Session;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Laravel\Fortify\Fortify;
 use Psr\Log\LoggerAwareTrait;
+use RuntimeException;
 
 class Otp
 {
@@ -23,6 +27,11 @@ class Otp
     const string MISMATCH = 'mismatch';
     const string THROTTLE = 'throttled';
     const string USER = 'user';
+
+    public function __construct(protected UserProvider $provider, protected StatefulGuard $guard)
+    {
+        //
+    }
 
     /**
      * Specify which view should be used as the login view.
@@ -57,18 +66,24 @@ class Otp
 
     /**
      * Check if otp authentication was not passed?
+     *
+     * @param  Authenticatable|string  $user
      */
-    public function notPassed(Session $session): bool
+    public function notPassed(Session $session, $user): bool
     {
-        return ! $this->passed($session);
+        return ! $this->passed($session, $user);
     }
 
     /**
      * Check if otp authentication was passed?
+     *
+     * @param  Authenticatable|string  $user
      */
-    public function passed(Session $session): bool
+    public function passed(Session $session, $user): bool
     {
-        if ($session->has('otp_passed')) {
+        $resolved = $this->resolve($user);
+
+        if ($resolved && $session->has($this->key('otp_passed', $resolved))) {
             $this->logger?->debug("Otp passed");
 
             return true;
@@ -80,18 +95,51 @@ class Otp
     }
 
     /**
-     * Send a new otp to the user.
+     * Resolve the user, looking a guest email address up.
      *
      * @param  Authenticatable|string  $user
      */
-    public function sendNewCode(Session $session, $user): string
+    protected function resolve($user): ?Authenticatable
     {
-        if ($user instanceof MustVerifyEmailWithOtp) {
-            $user->sendOtpNotification($this->newCode($session, $user));
-            $this->logger?->debug("Otp sent");
-        } else {
-            throw new \RuntimeException('User must implement MustVerifyEmailWithOtp interface');
+        if (is_string($user) && $user !== '') {
+            $user = $this->provider->retrieveByCredentials([
+                Fortify::email() => $user,
+            ]);
         }
+
+        if ($user instanceof Authenticatable) {
+            return $user;
+        }
+
+        return null;
+    }
+
+    /**
+     * Send a new otp to the user.
+     *
+     * The login flow resolves a user by a guest email address, and should not
+     * reveal whether that address is registered. Pass $strict to fail on a user
+     * that cannot receive an otp, as the email verification flow does.
+     *
+     * @param  Authenticatable|string  $user
+     *
+     * @throws RuntimeException
+     */
+    public function sendNewCode(Session $session, $user, bool $strict = false): string
+    {
+        $resolved = $this->resolve($user);
+
+        if (! $resolved instanceof MustVerifyEmailWithOtp) {
+            if ($strict) {
+                throw new RuntimeException('User must implement MustVerifyEmailWithOtp interface');
+            }
+
+            return self::SENT;
+        }
+
+        $resolved->sendOtpNotification($this->newCode($session, $user));
+
+        $this->logger?->debug("Otp sent");
 
         return self::SENT;
     }
@@ -128,14 +176,38 @@ class Otp
             ]);
         }
 
-        $this->markAsPassed($session, $user);
+        $resolved = $this->resolve($user);
 
-        if ($user instanceof MustVerifyEmail) {
-            $user->markEmailAsVerified();
-            return $user;
+        if (! $resolved) {
+
+            $this->logger?->warning("Otp verified, but user not found");
+
+            throw ValidationException::withMessages([
+                'email' => trans('otp::messages.'.self::USER)
+            ]);
         }
 
-        return null;
+        if ($resolved instanceof MustVerifyEmail) {
+            $resolved->markEmailAsVerified();
+        }
+
+        $this->forgetCode($session, $user);
+
+        $this->markAsPassed($session, $resolved);
+
+        return $resolved;
+    }
+
+    /**
+     * Log the user in, marking the otp as passed.
+     */
+    public function authenticate(Session $session, Authenticatable $user, bool $remember): void
+    {
+        $this->guard->login($user, $remember);
+
+        if ($session->regenerate()) {
+            $this->markAsPassed($session, $user);
+        }
     }
 
     protected function forgetCode(Session $session, Authenticatable|string $user): void
@@ -170,11 +242,9 @@ class Otp
         return $prefix.':'.$user;
     }
 
-    protected function markAsPassed(Session $session, Authenticatable|string $user): void
+    protected function markAsPassed(Session $session, Authenticatable $user): void
     {
-        $this->forgetCode($session, $user);
-
-        $session->put('otp_passed', true);
+        $session->put($this->key('otp_passed', $user), true);
 
         $this->logger?->notice("Otp marked as passed");
     }

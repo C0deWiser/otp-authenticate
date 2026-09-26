@@ -19,9 +19,13 @@ class Throttled implements ThrottledResponse
 
     public function toResponse($request)
     {
+        if ($response = $this->limiter->customResponse($request)) {
+            return $response;
+        }
+
         $retryAfter = $this->limiter->availableIn();
 
-        $this->logger?->debug(class_basename(__METHOD__), [
+        $this->logger?->debug(class_basename(__CLASS__), [
             'request'    => $request->method().' '.$request->path(),
             'input'      => $request->input(),
             'retryAfter' => $retryAfter,

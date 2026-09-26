@@ -3,7 +3,6 @@
 namespace Codewiser\Otp\Tests;
 
 use Codewiser\Otp\Otp;
-use Codewiser\Otp\OtpAuthenticate;
 use Codewiser\Otp\Tests\Fakes\Guard;
 use Codewiser\Otp\Tests\Fakes\PlainUser;
 use Codewiser\Otp\Tests\Fakes\Session;
@@ -13,9 +12,9 @@ use Illuminate\Validation\ValidationException;
 
 class AuthenticateServiceTest extends TestCase
 {
-    private function service(array $users = [], string $key = 'email'): OtpAuthenticate
+    private function service(array $users = [], string $key = 'email'): Otp
     {
-        return new OtpAuthenticate(new UserProvider($users, $key), new Guard);
+        return new Otp(new UserProvider($users, $key), new Guard);
     }
 
     public function test_send_new_code_stores_six_digit_code_and_notifies()
@@ -70,14 +69,26 @@ class AuthenticateServiceTest extends TestCase
     {
         $service = $this->service();
         $session = new Session;
+        $user = new User;
 
-        $this->assertFalse($service->passed($session));
-        $this->assertTrue($service->notPassed($session));
+        $this->assertFalse($service->passed($session, $user));
+        $this->assertTrue($service->notPassed($session, $user));
 
-        $session->put('otp_passed', true);
+        $service->authenticate($session, $user, false);
 
-        $this->assertTrue($service->passed($session));
-        $this->assertFalse($service->notPassed($session));
+        $this->assertTrue($service->passed($session, $user));
+        $this->assertFalse($service->notPassed($session, $user));
+    }
+
+    public function test_another_user_did_not_pass_the_otp()
+    {
+        $service = $this->service();
+        $session = new Session;
+
+        $service->authenticate($session, new User(1), false);
+
+        $this->assertTrue($service->passed($session, new User(1)));
+        $this->assertFalse($service->passed($session, new User(2)));
     }
 
     public function test_validate_sends_new_code_when_code_is_lost()
@@ -120,7 +131,7 @@ class AuthenticateServiceTest extends TestCase
 
         $this->assertSame($user, $service->validate($session, $user, $user->sentOtps[0]));
         $this->assertTrue($user->emailVerified);
-        $this->assertTrue($session->get('otp_passed'));
+        $this->assertSame(['otp_passed:id:1' => true], $this->otpPassed($session));
     }
 
     public function test_validate_uses_strict_comparison()
@@ -154,7 +165,7 @@ class AuthenticateServiceTest extends TestCase
         $service->validate($session, $user, '123456');
 
         $this->assertTrue($user->emailVerified);
-        $this->assertTrue($session->get('otp_passed'));
+        $this->assertSame(['otp_passed:id:1' => true], $this->otpPassed($session));
     }
 
     public function test_validate_returns_the_authenticated_user()
@@ -210,7 +221,7 @@ class AuthenticateServiceTest extends TestCase
 
         $this->assertSame($user, $resolved);
         $this->assertTrue($user->emailVerified);
-        $this->assertTrue($session->get('otp_passed'));
+        $this->assertSame(['otp_passed:id:1' => true], $this->otpPassed($session));
     }
 
     public function test_validate_throws_lost_error_for_unknown_guest_email()
@@ -232,7 +243,7 @@ class AuthenticateServiceTest extends TestCase
             $this->assertSame(trans('otp::messages.'.Otp::LOST), $e->errors()['code'][0]);
         }
 
-        $this->assertFalse($session->get('otp_passed', false));
+        $this->assertSame([], $this->otpPassed($session));
     }
 
     public function test_validate_fails_when_code_is_right_but_user_is_gone()
@@ -257,6 +268,8 @@ class AuthenticateServiceTest extends TestCase
             $this->assertArrayHasKey('email', $e->errors());
             $this->assertSame(trans('otp::messages.'.Otp::USER), $e->errors()['email'][0]);
         }
+
+        $this->assertSame([], $this->otpPassed($session));
     }
 
     public function test_validate_rejects_code_issued_for_another_user()
@@ -285,13 +298,13 @@ class AuthenticateServiceTest extends TestCase
             $this->assertArrayHasKey('code', $e->errors());
         }
 
-        $this->assertFalse($session->get('otp_passed', false));
+        $this->assertSame([], $this->otpPassed($session));
     }
 
     public function test_authenticate_logs_the_user_in_and_marks_as_passed()
     {
         $guard = new Guard;
-        $service = new OtpAuthenticate(new UserProvider, $guard);
+        $service = new Otp(new UserProvider, $guard);
         $session = new Session;
         $user = new User;
 
@@ -299,7 +312,7 @@ class AuthenticateServiceTest extends TestCase
 
         $this->assertSame([$user], $guard->logins);
         $this->assertSame($user, $guard->user);
-        $this->assertTrue($session->get('otp_passed'));
+        $this->assertSame(['otp_passed:id:1' => true], $this->otpPassed($session));
     }
 
     public function test_authenticate_does_not_mark_as_passed_when_session_is_not_regenerated()
@@ -311,10 +324,10 @@ class AuthenticateServiceTest extends TestCase
             }
         };
 
-        $service = new OtpAuthenticate(new UserProvider, new Guard);
+        $service = new Otp(new UserProvider, new Guard);
 
         $service->authenticate($session, new User, false);
 
-        $this->assertFalse($session->get('otp_passed', false));
+        $this->assertSame([], $this->otpPassed($session));
     }
 }

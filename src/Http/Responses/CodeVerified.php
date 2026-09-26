@@ -15,6 +15,6 @@ class CodeVerified implements CodeVerifiedResponse
     {
         return $request->wantsJson()
             ? new JsonResponse('', 200)
-            : redirect()->intended('/');
+            : redirect()->intended(config('fortify.home', '/'));
     }
 }

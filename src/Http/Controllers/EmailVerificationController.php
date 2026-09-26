@@ -31,9 +31,12 @@ class EmailVerificationController
     public function store(Request $request)
     {
         $name = $request->has('send') ? OtpRateLimiter::ISSUE : OtpRateLimiter::VERIFY;
-        $code = fn(Request $request) => $request->has('send') ? $this->issue($request) : $this->verify($request);
 
         $throttle = OtpRateLimiter::for($name, $request);
+
+        $code = fn(Request $request) => $request->has('send')
+            ? $this->issue($request)
+            : $this->verify($request, $throttle);
 
         return $throttle->attempt($code)
             ?: app(ThrottledResponse::class, ['limiter' => $throttle]);
@@ -43,7 +46,8 @@ class EmailVerificationController
     {
         $status = $this->otp->sendNewCode(
             $request->session(),
-            $request->user()
+            $request->user(),
+            strict: true
         );
 
         return app(CodeSentResponse::class, [
@@ -52,7 +56,7 @@ class EmailVerificationController
         ]);
     }
 
-    protected function verify(Request $request)
+    protected function verify(Request $request, OtpRateLimiter $limiter)
     {
         $data = $request->validate(['code' => 'required|string']);
 
@@ -61,6 +65,8 @@ class EmailVerificationController
             $request->user(),
             $data['code']
         );
+
+        $limiter->clear();
 
         return app(CodeVerifiedResponse::class);
     }

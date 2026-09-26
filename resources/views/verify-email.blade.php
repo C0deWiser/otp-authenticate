@@ -27,8 +27,12 @@
 
         <div>
             <button type="submit">@lang('Submit')</button>
-            <button type="submit" name="send">@lang('Send code')</button>
+            <button type="submit" name="send" data-retry-after="{{ $availableIn }}">@lang('Send code')</button>
         </div>
     </form>
+
+    @push('scripts')
+        <script src="{{ asset('vendor/otp/countdown.js') }}" defer></script>
+    @endpush
 
 @endsection

@@ -12,9 +12,9 @@ class OtpNotification extends Notification
     /**
      * The callback that should be used to build the mail message.
      *
-     * @var (Closure(mixed, string): MailMessage|Mailable)|null
+     * @var callable(object, string): (MailMessage|Mailable)|null
      */
-    public static ?Closure $toMailCallback = null;
+    public static $toMailCallback = null;
 
     /**
      * Create a new notification instance.
@@ -52,11 +52,11 @@ class OtpNotification extends Notification
     /**
      * Set a callback that should be used when building the notification mail message.
      *
-     * @param  Closure(mixed, string): (MailMessage|Mailable)  $callback
+     * @param  callable(object, string): (MailMessage|Mailable)  $callback
      *
      * @return void
      */
-    public static function toMailUsing($callback): void
+    public static function toMailUsing(callable $callback): void
     {
         static::$toMailCallback = $callback;
     }

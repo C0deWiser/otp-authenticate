@@ -3,15 +3,17 @@
 namespace Codewiser\Otp\Tests;
 
 use Codewiser\Otp\Otp;
+use Codewiser\Otp\Tests\Fakes\Guard;
 use Codewiser\Otp\Tests\Fakes\PlainUser;
 use Codewiser\Otp\Tests\Fakes\Session;
 use Codewiser\Otp\Tests\Fakes\User;
+use Codewiser\Otp\Tests\Fakes\UserProvider;
 
 class RevalidateServiceTest extends TestCase
 {
     private function service(): Otp
     {
-        return new Otp;
+        return new Otp(new UserProvider, new Guard);
     }
 
     public function test_send_new_code_sends_when_user_implements_contract()
@@ -30,6 +32,6 @@ class RevalidateServiceTest extends TestCase
     {
         $this->expectException(\RuntimeException::class);
 
-        $this->service()->sendNewCode(new Session, new PlainUser(1));
+        $this->service()->sendNewCode(new Session, new PlainUser(1), strict: true);
     }
 }

@@ -6,7 +6,11 @@ use Codewiser\Otp\Contracts\LoginViewResponse;
 use Codewiser\Otp\Contracts\VerifyEmailViewResponse;
 use Codewiser\Otp\Otp;
 use Codewiser\Otp\RateLimiter\OtpRateLimiter;
+use Codewiser\Otp\Tests\Fakes\Guard;
+use Codewiser\Otp\Tests\Fakes\User;
+use Codewiser\Otp\Tests\Fakes\UserProvider;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\View\View;
@@ -17,7 +21,7 @@ class OtpViewTest extends TestCase
     {
         parent::setUp();
 
-        $this->app->instance(Otp::class, new Otp);
+        $this->app->instance(Otp::class, new Otp(new UserProvider, new Guard));
 
         RateLimiter::for(OtpRateLimiter::ISSUE, fn (Request $request) => [
             \Illuminate\Cache\RateLimiting\Limit::perMinute(10)->by('test'),
@@ -109,11 +113,14 @@ class OtpViewTest extends TestCase
     {
         Otp::verifyEmailView('otp::verify-email');
 
+        $user = new User;
+
         $request = $this->request('/otp/email');
-        $request->session()->put('otp_passed', true);
+        $request->setUserResolver(fn () => $user);
+        $request->session()->put('otp_passed:id:1', true);
 
         $response = app(VerifyEmailViewResponse::class)->toResponse($request);
 
-        $this->assertInstanceOf(\Illuminate\Http\RedirectResponse::class, $response);
+        $this->assertInstanceOf(RedirectResponse::class, $response);
     }
 }

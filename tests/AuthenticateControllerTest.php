@@ -3,7 +3,6 @@
 namespace Codewiser\Otp\Tests;
 
 use Codewiser\Otp\Otp;
-use Codewiser\Otp\OtpAuthenticate;
 use Codewiser\Otp\RateLimiter\OtpRateLimiter;
 use Codewiser\Otp\Tests\Fakes\User;
 use Codewiser\Otp\Tests\Fakes\UserProvider;
@@ -33,13 +32,6 @@ class AuthenticateControllerTest extends TestCase
         ]));
         $app['config']->set('auth.providers.users.driver', 'otp-login-test');
         $app['auth']->forgetGuards();
-
-        $app->singleton(OtpAuthenticate::class, function ($app) {
-            return new OtpAuthenticate(
-                $app['auth']->createUserProvider('users'),
-                $app['auth']->guard('web')
-            );
-        });
 
         $app->make(RateLimiter::class)->for(OtpRateLimiter::ISSUE, fn (Request $request) => [
             Limit::perMinute(30)->by($request->input('email') ?: $request->ip()),
@@ -93,7 +85,7 @@ class AuthenticateControllerTest extends TestCase
 
         $this->assertAuthenticatedAs($this->user);
         $this->assertTrue($this->user->emailVerified);
-        $this->assertTrue(session()->get('otp_passed'));
+        $this->assertSame(['otp_passed:id:1' => true], $this->otpPassed());
     }
 
     public function test_verify_logs_the_guest_in_as_json()
@@ -106,7 +98,7 @@ class AuthenticateControllerTest extends TestCase
             ->assertOk();
 
         $this->assertAuthenticatedAs($this->user);
-        $this->assertTrue(session()->get('otp_passed'));
+        $this->assertSame(['otp_passed:id:1' => true], $this->otpPassed());
     }
 
     public function test_verify_rejects_unknown_email()
@@ -132,17 +124,46 @@ class AuthenticateControllerTest extends TestCase
 
         $this->assertGuest();
         $this->assertFalse($this->victim->emailVerified);
-        $this->assertFalse(session()->get('otp_passed', false));
+        $this->assertSame([], $this->otpPassed());
     }
 
     public function test_verify_rejects_a_wrong_code()
     {
-        $this->post('/otp/login', ['email' => $this->user->email]);
+        $this->post('/otp/login', ['email' => $this->user->email, 'send' => '']);
 
-        $this->put('/otp/login', ['email' => $this->user->email, 'code' => '000000'])
-            ->assertSessionHasErrors('code');
+        $code = $this->user->sentOtps[0];
+
+        // The generated code is random, make sure the guess is not the code.
+        $this->post('/otp/login', ['email' => $this->user->email, 'code' => $code === '000000' ? '111111' : '000000'])
+            ->assertSessionHasErrors([
+                'code' => trans('otp::messages.'.Otp::MISMATCH),
+            ]);
 
         $this->assertGuest();
         $this->assertFalse($this->user->emailVerified);
+        $this->assertSame([], $this->otpPassed());
+    }
+
+    public function test_verify_reports_a_lost_code()
+    {
+        $this->post('/otp/login', ['email' => $this->user->email, 'code' => '000000'])
+            ->assertSessionHasErrors([
+                'code' => trans('otp::messages.'.Otp::LOST),
+            ]);
+
+        $this->assertCount(1, $this->user->sentOtps);
+        $this->assertGuest();
+    }
+
+    public function test_verify_reports_an_unknown_email()
+    {
+        $this->post('/otp/login', ['email' => $this->user->email, 'send' => '']);
+
+        $this->post('/otp/login', ['email' => 'ghost@example.com', 'code' => $this->user->sentOtps[0]])
+            ->assertSessionHasErrors([
+                'code' => trans('otp::messages.'.Otp::LOST),
+            ]);
+
+        $this->assertGuest();
     }
 }

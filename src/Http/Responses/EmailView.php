@@ -10,10 +10,10 @@ class EmailView extends LoginView implements VerifyEmailViewResponse
 {
     public function toResponse($request): mixed
     {
-        if (app(Otp::class)->passed($request->session())) {
+        if (app(Otp::class)->passed($request->session(), $request->user())) {
             return $request->wantsJson()
                 ? new JsonResponse('', 200)
-                : redirect()->intended('/');
+                : redirect()->intended(config('fortify.home', '/'));
         }
 
         return parent::toResponse($request);
