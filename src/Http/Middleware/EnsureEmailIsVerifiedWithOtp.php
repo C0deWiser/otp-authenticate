@@ -9,7 +9,7 @@ use Codewiser\Otp\Otp;
 use Codewiser\Otp\RateLimiter\OtpRateLimiter;
 use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
 
-class EnsureOtpIsPassed extends EnsureEmailIsVerified
+class EnsureEmailIsVerifiedWithOtp extends EnsureEmailIsVerified
 {
     public function __construct(public Otp $otp)
     {

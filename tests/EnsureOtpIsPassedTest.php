@@ -2,7 +2,7 @@
 
 namespace Codewiser\Otp\Tests;
 
-use Codewiser\Otp\Http\Middleware\EnsureOtpIsPassed;
+use Codewiser\Otp\Http\Middleware\EnsureEmailIsVerifiedWithOtp;
 use Codewiser\Otp\Otp;
 use Codewiser\Otp\Tests\Fakes\Guard;
 use Codewiser\Otp\Tests\Fakes\PlainUser;
@@ -20,7 +20,7 @@ class EnsureOtpIsPassedTest extends TestCase
 
         $this->app->instance(Otp::class, new Otp(new UserProvider, new Guard));
 
-        Route::middleware(['web', EnsureOtpIsPassed::class])
+        Route::middleware(['web', EnsureEmailIsVerifiedWithOtp::class])
             ->get('/otp-protected', fn () => 'protected content');
 
         Route::middleware('web')

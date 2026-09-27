@@ -2,9 +2,6 @@
 
 use Codewiser\Otp\Http\Controllers\AuthenticatedSessionController;
 use Codewiser\Otp\Http\Controllers\EmailVerificationController;
-use Codewiser\Otp\Http\Middleware\EnsureOtpIsPassed;
-use Codewiser\Otp\RateLimiter\OtpRateLimiter;
-use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('web')

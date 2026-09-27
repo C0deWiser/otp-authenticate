@@ -4,21 +4,16 @@ namespace Codewiser\Otp;
 
 use Codewiser\Fortify\NavStack;
 use Codewiser\Otp\Console\InstallCommand;
-use Codewiser\Otp\Contracts\CodeVerifiedResponse;
 use Codewiser\Otp\Contracts\CodeSentResponse;
+use Codewiser\Otp\Contracts\CodeVerifiedResponse;
 use Codewiser\Otp\Contracts\LoginViewResponse;
 use Codewiser\Otp\Contracts\ThrottledResponse;
 use Codewiser\Otp\Contracts\VerifyEmailViewResponse;
-use Codewiser\Otp\Http\Middleware\EnsureOtpIsPassed;
+use Codewiser\Otp\Http\Middleware\EnsureEmailIsVerifiedWithOtp;
 use Codewiser\Otp\Http\Responses\CodeSent;
 use Codewiser\Otp\Http\Responses\CodeVerified;
 use Codewiser\Otp\Http\Responses\Throttled;
-use Codewiser\Otp\RateLimiter\OtpRateLimiter;
-use Illuminate\Cache\RateLimiter;
-use Illuminate\Cache\RateLimiting\Limit;
-use Illuminate\Cache\RateLimiting\Unlimited;
 use Illuminate\Contracts\Auth\Authenticatable;
-use Illuminate\Http\Request;
 use Illuminate\Support\ServiceProvider;
 use Psr\Log\LoggerInterface;
 
@@ -29,7 +24,7 @@ class OtpServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->bind('verified.otp', EnsureOtpIsPassed::class);
+        $this->app->bind('verified.otp', EnsureEmailIsVerifiedWithOtp::class);
 
         $this->app->singleton(CodeSentResponse::class, CodeSent::class);
         $this->app->singleton(ThrottledResponse::class, Throttled::class);
@@ -46,7 +41,7 @@ class OtpServiceProvider extends ServiceProvider
                 fn(NavStack $stack, Authenticatable $user) => $stack
                     ->push('otp-passed.example', '<code>verified.otp</code>', 5),
                 fn(NavStack $stack) => $stack
-                    ->push('otp.login', __('Sing In with otp'), 1)
+                    ->push('otp.login', __('OTP Sign In'), 1)
             );
         });
     }

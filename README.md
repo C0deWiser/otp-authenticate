@@ -23,7 +23,7 @@ The revalidation process will be:
 * application sends a notification with one time password
 * user affirms authentication providing this password
 
-> Apply `EnsureOtpIsPassed` middleware to revalidate emails.
+> Apply `EnsureEmailIsVerifiedWithOtp` middleware to revalidate emails.
 
 ![otp](otp.png)
 
@@ -143,6 +143,25 @@ login screen and the validation errors will be available to you via the
 shared `$errors` Blade template variable. Or, in the case of an XHR request, 
 the validation errors will be returned with the 422 HTTP response.
 
+### Redirecting Unauthenticated Users
+
+When the `auth` middleware detects an unauthenticated user, it will redirect 
+the user to the `login` named route. You may modify this behavior using the 
+`redirectGuestsTo` method within your application's `bootstrap/app.php` file:
+
+```php
+use Illuminate\Http\Request;
+
+->withMiddleware(function (Middleware $middleware): void {
+    $middleware->redirectGuestsTo('/otp/login');
+
+    // Using a closure...
+    $middleware->redirectGuestsTo(fn (Request $request) => route('otp.login'));
+})
+```
+
+[Read more](https://laravel.com/framework/docs/authentication#protecting-routes)
+
 ## Email Verification
 
 You may wish for users to **periodically re-verify** their email address before 
@@ -175,12 +194,8 @@ class User extends Authenticatable implements MustVerifyEmailWithOtp
         }
     
         if ($this->roles->contains('manager')) {
-            // Manager should verify their email every month.
-            return now()
-                ->diffAsCarbonInterval($this->email_verified_at)
-                ->greaterThan(
-                    new \DateInterval('P1M')
-                );
+            // Manager should re-verify their email every month.
+            return $this->email_verified_at->addMonth()->isPast();
         }
         
         return false;
@@ -199,7 +214,7 @@ of your application's `App\Providers\OtpServiceProvider` class.
 
 Service will take care of defining the route that displays this view when a
 user is redirected to the `/otp/email` endpoint by
-`EnsureOtpIsPassed` middleware.
+`EnsureEmailIsVerifiedWithOtp` middleware.
 
 ```php
 use Codewiser\Otp\Otp;
@@ -248,9 +263,9 @@ the validation errors will be returned with the 422 HTTP response.
 
 Route middleware may be used to force users to re-verify email to access a 
 given route. Service includes a `verified.otp` middleware alias, which is an 
-alias for the `Codewiser\Otp\Http\Middleware\EnsureOtpIsPassed` middleware 
-class. All you need to do is attach the `verified.otp` middleware to a route 
-definition. 
+alias for the `Codewiser\Otp\Http\Middleware\EnsureEmailIsVerifiedWithOtp`
+middleware class. All you need to do is attach the `verified.otp` middleware 
+to a route definition. 
 
 `verified.otp` middleware extends the built-in Laravel's `verified` 
 middleware. `verified.otp` handles only authenticated web requests, if 
