@@ -7,7 +7,7 @@
 
     <h1>@lang('Authentication with OTP')</h1>
 
-    <p class="notice">
+    <p>
         @lang('Authenticate with one time password. Provide your email address and we will send you a code.')
     </p>
 

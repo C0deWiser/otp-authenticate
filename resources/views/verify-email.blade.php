@@ -7,7 +7,7 @@
 
     <h1>@lang('Email Verification with OTP')</h1>
 
-    <p class="notice">
+    <p>
         @lang('Verify your email with one time password. Provide your email address and we will send you a code.')
     </p>
 
